@@ -84,7 +84,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
               title="Fund & Liquidity Health"
             >
               <Wallet className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Fund Health</span>
+              <span>{t.fundHealth}</span>
             </button>
 
             {isSuperAdmin && (
@@ -178,19 +178,19 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
             onClick={() => setFilter('all')}
             className={`px-3 py-1 rounded-lg font-semibold transition ${filter === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-400'}`}
           >
-            All (15)
+            {t.all} (15)
           </button>
           <button
             onClick={() => setFilter('pending')}
             className={`px-3 py-1 rounded-lg font-semibold transition ${filter === 'pending' ? 'bg-amber-600 text-white shadow' : 'text-slate-400'}`}
           >
-            Pending ({stats.pendingCount})
+            {t.filterPending} ({stats.pendingCount})
           </button>
           <button
             onClick={() => setFilter('paid')}
             className={`px-3 py-1 rounded-lg font-semibold transition ${filter === 'paid' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400'}`}
           >
-            Paid ({stats.paidCount})
+            {t.filterPaid} ({stats.paidCount})
           </button>
         </div>
 
@@ -240,7 +240,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
                         )}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        Outer: <span className="text-slate-300 font-medium">{formatINR(bill.outerTotal)}</span> • Self: <span className="text-slate-300 font-medium">{formatINR(bill.selfTotal)}</span>
+                        {t.outer}: <span className="text-slate-300 font-medium">{formatINR(bill.outerTotal)}</span> • {t.self}: <span className="text-slate-300 font-medium">{formatINR(bill.selfTotal)}</span>
                       </div>
                     </div>
                   </div>
@@ -249,15 +249,15 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
                   <div>
                     {isPaid ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-                        <CheckCircle2 className="w-3 h-3" /> Paid
+                        <CheckCircle2 className="w-3 h-3" /> {t.paid}
                       </span>
                     ) : isShort ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-950/80 text-amber-400 border border-amber-800/60 px-2 py-0.5 rounded-full">
-                        <AlertCircle className="w-3 h-3" /> Short: {formatINR(p.shortAmount)}
+                        <AlertCircle className="w-3 h-3" /> {t.short}: {formatINR(p.shortAmount)}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
-                        <Clock className="w-3 h-3" /> Pending
+                        <Clock className="w-3 h-3" /> {t.pending}
                       </span>
                     )}
                   </div>
@@ -266,7 +266,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
                 {/* Bottom Action / Details Row */}
                 <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block font-medium">Total Payable:</span>
+                    <span className="text-[10px] text-slate-400 block font-medium">{t.totalPayable}</span>
                     <span className="text-base font-extrabold text-white">{formatINR(bill.totalDue)}</span>
                   </div>
 
@@ -281,7 +281,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
                             : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/30'
                         }`}
                       >
-                        {isPaid ? 'Undo' : 'Mark Paid'}
+                        {isPaid ? t.undo : t.paid}
                       </button>
 
                       <button
@@ -293,12 +293,12 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
                         className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-[11px]"
                         title="Record Short / Extra"
                       >
-                        Short/Extra
+                        {t.short}/{t.extra}
                       </button>
                     </div>
                   ) : (
                     <div className="text-[11px] text-slate-400 italic">
-                      Unit: {formatINR(bill.monthlyUnit)} included
+                      {t.monthlyUnit}: {formatINR(bill.monthlyUnit)}
                     </div>
                   )}
                 </div>

@@ -1,10 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { calculateKisht, calculateSecurityFee, formatINR } from '../../utils/loanCalculator';
 import { X, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 export default function DisburseLoanModal({ isOpen, onClose }) {
-  const { members, disburseLoan, getMemberLimits } = useApp();
+  const { members, disburseLoan, getMemberLimits, t } = useApp();
 
   const [type, setType] = useState('outer'); // 'outer' | 'self'
   const [borrowerName, setBorrowerName] = useState('');
@@ -59,9 +59,9 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-emerald-400" />
-              Disburse New Loan
+              {t.disburseLoanTitle}
             </h3>
-            <p className="text-[11px] text-slate-400">Fixed 12 Months tenure auto-applied</p>
+            <p className="text-[11px] text-slate-400">{t.disburseLoanSubtitle}</p>
           </div>
           <button
             onClick={onClose}
@@ -83,7 +83,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Outer Loan (16%)
+              {t.outerLoan16}
             </button>
             <button
               type="button"
@@ -94,14 +94,14 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Member Self (10%)
+              {t.selfLoan10}
             </button>
           </div>
 
           {/* Borrower Name */}
           <div>
             <label className="text-slate-300 font-semibold block mb-1">
-              {type === 'self' ? 'Select Member (Borrower):' : 'Outsider Full Name:'}
+              {type === 'self' ? 'Select Member (Borrower):' : t.borrowerNameLabel}
             </label>
             {type === 'self' ? (
               <select
@@ -130,7 +130,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
           {type === 'outer' && (
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-slate-300 font-semibold">Committee Guarantor:</label>
+                <label className="text-slate-300 font-semibold">{t.guarantorLabel}</label>
                 <span className="text-[10px] text-amber-400 font-bold">
                   Avail Limit: {formatINR(limits.outerLeft)}
                 </span>
@@ -150,7 +150,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
           {/* Principal Amount */}
           <div>
             <label className="text-slate-300 font-semibold block mb-1">
-              Loan Amount (Principal ₹):
+              {t.principalLabel}
             </label>
             <input
               type="number"
@@ -172,18 +172,18 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
               <span className="font-bold text-white">{type === 'self' ? '10% Flat' : '16% Flat'}</span>
             </div>
             <div className="flex justify-between">
-              <span>Monthly Kisht (12 Mos):</span>
+              <span>{t.monthlyKishtBreakdown}</span>
               <span className="font-extrabold text-emerald-400 text-sm">{formatINR(kisht)} / month</span>
             </div>
             <div className="flex justify-between">
-              <span>Upfront Security Fee:</span>
+              <span>{t.securityFeeDeduction}</span>
               <span className="font-bold text-amber-400">{formatINR(security)}</span>
             </div>
 
             {isLimitExceeded && (
               <div className="pt-2 text-amber-400 text-[11px] flex items-center gap-1">
                 <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
-                <span>Exceeds available limit of {formatINR(availableLimit)}!</span>
+                <span>{t.loanExceedsLimit} ({formatINR(availableLimit)})</span>
               </div>
             )}
           </div>
@@ -194,13 +194,13 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
               onClick={onClose}
               className="flex-1 py-2.5 rounded-xl bg-slate-800 text-slate-300 font-semibold"
             >
-              Cancel
+              {t.cancel}
             </button>
             <button
               type="submit"
               className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/40 active:scale-98 transition"
             >
-              Approve & Disburse
+              {t.disburseSubmitBtn}
             </button>
           </div>
         </form>

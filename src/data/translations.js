@@ -1,4 +1,4 @@
-﻿export const translations = {
+export const translations = {
   en: {
     // Header & Common
     appTitle: "Committee Portal",
@@ -98,6 +98,65 @@
     yourGuarantor: "Your Committee Guarantor",
     callGuarantor: "Call",
     installmentReceipts: "Installment Receipts History",
+
+    // Fund Manager & Liquidity
+    fundHealth: "Fund Health",
+    fundLiquidityManager: "Smart Fund & Liquidity Manager",
+    fundSubtitle: "Balancing cash in hand vs. loan demand",
+    meetingCashCollected: "Meeting Cash Collected Today:",
+    openingReserveFund: "Opening Reserve Fund Balance:",
+    totalDisbursableCash: "TOTAL DISBURSABLE CASH:",
+    fundDeficitAlert: "Fund Shortage Alert",
+    surplusLiquidity: "Liquidity Status: Healthy",
+    suggestedUnitAdjustment: "Recommended Monthly Unit:",
+    applySuggestedUnit: "Apply Recommended Unit",
+    customUnitLabel: "Set Custom Unit Amount (₹):",
+    updateMonthlyUnit: "Update Monthly Unit",
+
+    // Pending Loan Requests
+    pendingRequestsTitle: "Member Loan Requests",
+    pendingRequestsSubtitle: "Review, Approve or Reject member submissions",
+    noPendingRequests: "No pending loan applications from members.",
+    requestedByMember: "Requested by Member:",
+    tenure12Months: "Tenure: 12 Months",
+    approveLoan: "Approve & Disburse",
+    rejectLoan: "Reject",
+    loanExceedsLimit: "Warning: Exceeds remaining limit!",
+
+    // Disburse Loan Modal
+    disburseLoanTitle: "Disburse New Loan",
+    disburseLoanSubtitle: "Create 12-month loan with automatic calculations",
+    outerLoan16: "Outer Loan (16% Flat)",
+    selfLoan10: "Self Loan (10% Flat)",
+    borrowerNameLabel: "Borrower Full Name:",
+    borrowerPhoneLabel: "Borrower Mobile Number:",
+    guarantorLabel: "Select Committee Guarantor:",
+    principalLabel: "Loan Principal Amount (₹):",
+    monthlyKishtBreakdown: "Monthly Kisht (12 Months):",
+    securityFeeDeduction: "0.5% Security Fee Deducted at Source:",
+    netInHand: "Net Cash Given to Borrower:",
+    disburseSubmitBtn: "Disburse & Issue Loan",
+
+    // Activity Logs Modal
+    activityLogsTitle: "Transparent Activity Logs",
+    activityLogsSubtitle: "Complete audit trail visible to all members",
+    allLogs: "All Logs",
+    paymentsFilter: "Payments",
+    loansFilter: "Loans",
+    noLogsRecorded: "No activity recorded yet.",
+    revertAction: "Revert",
+
+    // Login Screen
+    loginHeaderTitle: "Committee Portal Login",
+    loginHeaderSubtitle: "Enter your registered Mobile Number or Loan ID",
+    inputPhoneLabel: "Mobile Number / Member Name / Loan ID:",
+    securityPinLabel: "Security PIN (Optional for Demo):",
+    defaultPinHint: "Default: 1234",
+    loginSubmitBtn: "Login to Portal",
+    quickDemoLabel: "1-Tap Quick Demo Login:",
+    privateNetworkNote: "🔒 Committee Private Network • Role detected automatically",
+    english: "English",
+    hindi: "हिंदी",
   },
   hi: {
     // Header & Common
@@ -198,5 +257,64 @@
     yourGuarantor: "आपके कमिटी ज़ामिनदार (गारंटर)",
     callGuarantor: "कॉल करें",
     installmentReceipts: "किश्त रसीद इतिहास",
+
+    // Fund Manager & Liquidity
+    fundHealth: "फंड स्थिति",
+    fundLiquidityManager: "स्मार्ट फंड व लिक्विडिटी प्रबंधक",
+    fundSubtitle: "हाथ में उपलब्ध नकद बनाम लोन की मांग",
+    meetingCashCollected: "मीटिंग में आज जमा नकद:",
+    openingReserveFund: "पिछला रिज़र्व फंड बैलेंस:",
+    totalDisbursableCash: "कुल वितरण योग्य नकद:",
+    fundDeficitAlert: "फंड कमी सूचना",
+    surplusLiquidity: "फंड स्थिति: पर्याप्त व सुरक्षित",
+    suggestedUnitAdjustment: "सुझाई गई नई मासिक यूनिट:",
+    applySuggestedUnit: "सुजुहाई गई यूनिट लागू करें",
+    customUnitLabel: "कस्टम यूनिट राशि सेट करें (₹):",
+    updateMonthlyUnit: "मासिक यूनिट अपडेट करें",
+
+    // Pending Loan Requests
+    pendingRequestsTitle: "सदस्य लोन आवेदन",
+    pendingRequestsSubtitle: "सदस्यों के आवेदनों की समीक्षा, स्वीकृति या अस्वीकृति",
+    noPendingRequests: "फ़िलहाल कोई लंबित लोन आवेदन नहीं है।",
+    requestedByMember: "आवेदक सदस्य:",
+    tenure12Months: "अवधि: १२ महीने",
+    approveLoan: "स्वीकृत व जारी करें",
+    rejectLoan: "अस्वीकृत करें",
+    loanExceedsLimit: "चेतावनी: शेष लिमिट से अधिक है!",
+
+    // Disburse Loan Modal
+    disburseLoanTitle: "नया लोन जारी करें",
+    disburseLoanSubtitle: "१२-महीने का लोन स्वतः गणना के साथ",
+    outerLoan16: "बाहरी लोन (१६% फ्लैट)",
+    selfLoan10: "खुद का लोन (१०% फ्लैट)",
+    borrowerNameLabel: "क़र्ज़दार का पूरा नाम:",
+    borrowerPhoneLabel: "क़र्ज़दार का मोबाइल नंबर:",
+    guarantorLabel: "कमिटी ज़ामिनदार (गारंटर) चुनें:",
+    principalLabel: "लोन मूलधन राशि (₹):",
+    monthlyKishtBreakdown: "मासिक किश्त (१२ महीने):",
+    securityFeeDeduction: "०.५% सुरक्षा शुल्क कटौती:",
+    netInHand: "क़र्ज़दार को दी जाने वाली शुद्ध राशि:",
+    disburseSubmitBtn: "लोन स्वीकृत व जारी करें",
+
+    // Activity Logs Modal
+    activityLogsTitle: "पारदर्शी गतिविधि लॉग्स (बहीखाता)",
+    activityLogsSubtitle: "सभी सदस्यों के लिए पूर्ण पारदर्शी इतिहास",
+    allLogs: "सभी लॉग्स",
+    paymentsFilter: "भुगतान",
+    loansFilter: "लोन",
+    noLogsRecorded: "अभी तक कोई गतिविधि दर्ज नहीं है।",
+    revertAction: "पूर्ववत करें (Undo)",
+
+    // Login Screen
+    loginHeaderTitle: "कमिटी पोर्टल लॉगिन",
+    loginHeaderSubtitle: "अपना पंजीकृत मोबाइल नंबर या लोन आईडी दर्ज करें",
+    inputPhoneLabel: "मोबाइल नंबर / सदस्य का नाम / लोन आईडी:",
+    securityPinLabel: "सुरक्षा पिन (डेमो हेतु ऐच्छिक):",
+    defaultPinHint: "डिफ़ॉल्ट: 1234",
+    loginSubmitBtn: "पोर्टल में प्रवेश करें",
+    quickDemoLabel: "१-क्लिक त्वरित डेमो लॉगिन:",
+    privateNetworkNote: "🔒 कमिटी निजी नेटवर्क • रोल स्वतः पहचाना जाएगा",
+    english: "English",
+    hindi: "हिंदी",
   }
 };

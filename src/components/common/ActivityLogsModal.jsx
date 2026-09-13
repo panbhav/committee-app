@@ -1,9 +1,9 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { History, Undo2, UserCheck, Shield, Clock, AlertCircle } from 'lucide-react';
 
 export default function ActivityLogsModal({ isOpen, onClose }) {
-  const { auditLogs, rollbackAction, isSuperAdmin } = useApp();
+  const { auditLogs, rollbackAction, isSuperAdmin, t } = useApp();
   const [filter, setFilter] = useState('all'); // 'all' | 'payments' | 'loans'
 
   if (!isOpen) return null;
@@ -24,8 +24,8 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
               <History className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Transparent Activity Logs</h3>
-              <p className="text-[10px] text-slate-400">Complete audit trail visible to all members</p>
+              <h3 className="text-sm font-bold text-white">{t.activityLogsTitle}</h3>
+              <p className="text-[10px] text-slate-400">{t.activityLogsSubtitle}</p>
             </div>
           </div>
           <button
@@ -42,19 +42,19 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
             onClick={() => setFilter('all')}
             className={`flex-1 py-1 rounded-lg font-bold transition ${filter === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-400'}`}
           >
-            All Logs ({auditLogs.length})
+            {t.allLogs} ({auditLogs.length})
           </button>
           <button
             onClick={() => setFilter('payments')}
             className={`flex-1 py-1 rounded-lg font-bold transition ${filter === 'payments' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400'}`}
           >
-            Payments
+            {t.paymentsFilter}
           </button>
           <button
             onClick={() => setFilter('loans')}
             className={`flex-1 py-1 rounded-lg font-bold transition ${filter === 'loans' ? 'bg-amber-600 text-white shadow' : 'text-slate-400'}`}
           >
-            Loans
+            {t.loansFilter}
           </button>
         </div>
 
@@ -62,7 +62,7 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
           {filteredLogs.length === 0 ? (
             <div className="p-8 text-center text-slate-500 text-xs">
-              No activity recorded under this filter.
+              {t.noLogsRecorded}
             </div>
           ) : (
             filteredLogs.map(log => {
@@ -112,7 +112,7 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
                         className="flex items-center gap-1 text-[10px] font-bold text-amber-400 hover:text-amber-300 bg-amber-950/40 border border-amber-800/40 px-2 py-1 rounded-lg active:scale-95 transition"
                       >
                         <Undo2 className="w-3 h-3" />
-                        <span>Undo / Revert This Action</span>
+                        <span>{t.revertAction}</span>
                       </button>
                     </div>
                   )}

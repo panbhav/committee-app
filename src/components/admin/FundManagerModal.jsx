@@ -45,9 +45,9 @@ export default function FundManagerModal({ isOpen, onClose }) {
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
               <Wallet className="w-4 h-4 text-emerald-400" />
-              Smart Fund & Liquidity Manager
+              {t.fundLiquidityManager}
             </h3>
-            <p className="text-[10px] text-slate-400">Balancing cash in hand vs. loan demand</p>
+            <p className="text-[10px] text-slate-400">{t.fundSubtitle}</p>
           </div>
           <button
             onClick={onClose}
@@ -60,15 +60,15 @@ export default function FundManagerModal({ isOpen, onClose }) {
         {/* Live Cash Summary */}
         <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs">
           <div className="flex justify-between text-slate-300">
-            <span>Meeting Cash Collected Today:</span>
+            <span>{t.meetingCashCollected}</span>
             <span className="font-bold text-emerald-400">{formatINR(stats.totalCollected)}</span>
           </div>
           <div className="flex justify-between text-slate-300">
-            <span>Opening Reserve Fund Balance:</span>
+            <span>{t.openingReserveFund}</span>
             <span className="font-bold text-white">{formatINR(availableCashFund)}</span>
           </div>
           <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
-            <span className="font-black text-slate-200">TOTAL DISBURSABLE CASH:</span>
+            <span className="font-black text-slate-200">{t.totalDisbursableCash}</span>
             <span className="text-base font-black text-emerald-400">{formatINR(totalLiquidCash)}</span>
           </div>
         </div>

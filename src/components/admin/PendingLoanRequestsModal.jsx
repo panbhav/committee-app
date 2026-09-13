@@ -1,10 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Check, X, Clock, AlertCircle, Sparkles } from 'lucide-react';
 import { formatINR } from '../../utils/loanCalculator';
 
 export default function PendingLoanRequestsModal({ isOpen, onClose }) {
-  const { loanRequests, approveLoanRequest, rejectLoanRequest, isSuperAdmin, getMemberLimits } = useApp();
+  const { loanRequests, approveLoanRequest, rejectLoanRequest, isSuperAdmin, getMemberLimits, t } = useApp();
 
   if (!isOpen) return null;
 
@@ -17,9 +17,9 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
           <div>
             <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
               <Sparkles className="w-4 h-4 text-amber-400" />
-              Member Loan Requests ({pendingList.length})
+              {t.pendingRequestsTitle} ({pendingList.length})
             </h3>
-            <p className="text-[10px] text-slate-400">Review, Approve or Reject member submissions</p>
+            <p className="text-[10px] text-slate-400">{t.pendingRequestsSubtitle}</p>
           </div>
           <button
             onClick={onClose}
@@ -32,7 +32,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
         <div className="flex-1 overflow-y-auto space-y-2.5 pr-1 text-xs">
           {pendingList.length === 0 ? (
             <div className="p-8 text-center text-slate-500">
-              No pending loan applications from members.
+              {t.noPendingRequests}
             </div>
           ) : (
             pendingList.map(req => {
@@ -56,7 +56,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                         {req.borrowerName}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        Requested by Member: <b className="text-indigo-400">{req.requestedBy}</b>
+                        {t.requestedByMember} <b className="text-indigo-400">{req.requestedBy}</b>
                       </div>
                     </div>
 
@@ -75,7 +75,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                   {isOverLimit && (
                     <div className="text-[10px] text-amber-400 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
-                      <span>Exceeds {req.requestedBy}'s limit ({formatINR(availableLimit)} left)</span>
+                      <span>{t.loanExceedsLimit} ({formatINR(availableLimit)} left)</span>
                     </div>
                   )}
 
@@ -87,7 +87,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                         className="flex-1 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold flex items-center justify-center gap-1 text-[11px]"
                       >
                         <X className="w-3 h-3 text-red-400" />
-                        <span>Reject</span>
+                        <span>{t.rejectLoan}</span>
                       </button>
                       <button
                         onClick={() => {
@@ -98,7 +98,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                         className="flex-1 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-1 text-[11px] shadow"
                       >
                         <Check className="w-3 h-3" />
-                        <span>Approve & Disburse</span>
+                        <span>{t.approveLoan}</span>
                       </button>
                     </div>
                   ) : (
