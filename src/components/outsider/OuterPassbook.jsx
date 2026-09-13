@@ -1,10 +1,10 @@
-﻿import React from 'react';
+import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
 import { ShieldCheck, Phone, FileCheck2, AlertCircle } from 'lucide-react';
 
 export default function OuterPassbook() {
-  const { loans, currentOuterLoanId, members } = useApp();
+  const { loans, currentOuterLoanId, members, t } = useApp();
 
   const loan = loans.find(l => l.id === currentOuterLoanId) || loans.find(l => l.type === 'outer');
 
@@ -29,7 +29,7 @@ export default function OuterPassbook() {
         <div className="flex justify-between items-start mb-2">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-sky-400 bg-sky-950/80 border border-sky-800/50 px-2 py-0.5 rounded-full">
-              Borrower Passbook
+              {t.borrowerPassbook}
             </span>
             <h2 className="text-xl font-black text-white mt-1">
               {loan.borrowerName}
@@ -46,20 +46,20 @@ export default function OuterPassbook() {
 
         {/* Big Installment Card */}
         <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-4 text-center mt-3">
-          <span className="text-xs text-emerald-300 font-medium">Your Monthly Kisht (Installment)</span>
+          <span className="text-xs text-emerald-300 font-medium">{t.monthlyKisht}</span>
           <div className="text-3xl font-black text-white mt-1">
             {formatINR(loan.monthlyKisht)}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
-            Due on 10th of every month
+            {t.dueOn10th}
           </span>
         </div>
 
         {/* 12-Month Progress Bar */}
         <div className="mt-4 space-y-1.5">
           <div className="flex justify-between text-xs font-semibold">
-            <span className="text-slate-400">Repayment Progress:</span>
-            <span className="text-white">Kisht {loan.currentMonth} of {loan.totalMonths} ({progressPercent}%)</span>
+            <span className="text-slate-400">{t.repaymentProgress}:</span>
+            <span className="text-white">{loan.currentMonth} / {loan.totalMonths} ({progressPercent}%)</span>
           </div>
           <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
             <div
@@ -68,8 +68,8 @@ export default function OuterPassbook() {
             />
           </div>
           <div className="flex justify-between text-[11px] text-slate-400 pt-1">
-            <span>Paid: <b className="text-slate-200">{formatINR(totalPaidSoFar)}</b></span>
-            <span>Balance: <b className="text-emerald-400">{formatINR(remainingBalance)}</b></span>
+            <span>{t.paidSoFar}: <b className="text-slate-200">{formatINR(totalPaidSoFar)}</b></span>
+            <span>{t.balance}: <b className="text-emerald-400">{formatINR(remainingBalance)}</b></span>
           </div>
         </div>
       </div>
@@ -81,7 +81,7 @@ export default function OuterPassbook() {
             <ShieldCheck className="w-5 h-5" />
           </div>
           <div>
-            <span className="text-[10px] text-slate-400 block font-medium">Your Committee Guarantor</span>
+            <span className="text-[10px] text-slate-400 block font-medium">{t.yourGuarantor}</span>
             <span className="text-sm font-bold text-white">{loan.guarantor}</span>
           </div>
         </div>
@@ -91,15 +91,16 @@ export default function OuterPassbook() {
           className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition"
         >
           <Phone className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Call</span>
+          <span>{t.callGuarantor}</span>
         </button>
       </div>
 
       {/* Payment History Log */}
       <div className="space-y-2">
         <span className="text-xs font-bold text-slate-300 uppercase tracking-wider px-1">
-          Installment Receipts History
+          {t.installmentReceipts}
         </span>
+
 
         <div className="space-y-1.5">
           {Array.from({ length: loan.currentMonth }).map((_, idx) => {

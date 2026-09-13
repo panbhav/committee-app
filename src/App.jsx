@@ -123,7 +123,7 @@ export default function App() {
           <div className="space-y-4 pb-20">
             <div className="flex justify-between items-center px-1">
               <div>
-                <h2 className="text-lg font-bold text-white">Active Loans Register</h2>
+                <h2 className="text-lg font-bold text-white">{t.activeLoansRegister}</h2>
                 <p className="text-xs text-slate-400">Total {loans.length} active loans (12 Kishts)</p>
               </div>
               {isSuperAdmin && (
@@ -132,7 +132,7 @@ export default function App() {
                   className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>New Loan</span>
+                  <span>{t.newLoan}</span>
                 </button>
               )}
             </div>
@@ -142,7 +142,7 @@ export default function App() {
               <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search by loan # (e.g. 408), borrower, or guarantor..."
+                placeholder={t.searchLoansPlaceholder}
                 value={loanSearch}
                 onChange={(e) => setLoanSearch(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
@@ -178,7 +178,7 @@ export default function App() {
                         </span>
                       </div>
                       <div className="text-[11px] text-slate-400 mt-0.5">
-                        Guarantor: <b className="text-slate-200">{l.guarantor}</b> • Month: <b className="text-emerald-400">{l.currentMonth}/12</b>
+                        {t.guarantor}: <b className="text-slate-200">{l.guarantor}</b> • {t.month}: <b className="text-emerald-400">{l.currentMonth}/12</b>
                       </div>
                     </div>
 
@@ -187,7 +187,7 @@ export default function App() {
                         {formatINR(l.monthlyKisht)}
                       </span>
                       <span className="text-[10px] text-slate-400 block">
-                        Principal: {formatINR(l.principal)}
+                        {t.principal}: {formatINR(l.principal)}
                       </span>
                     </div>
                   </div>
@@ -201,7 +201,7 @@ export default function App() {
         {activeTab === 'limits' && (
           <div className="space-y-4 pb-20">
             <div>
-              <h2 className="text-lg font-bold text-white">15 Member Risk Limits</h2>
+              <h2 className="text-lg font-bold text-white">{t.memberRiskLimits}</h2>
               <p className="text-xs text-slate-400">Cap: ₹2L Personal • ₹8L Outer Guarantee</p>
             </div>
 
@@ -210,7 +210,7 @@ export default function App() {
               <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Search member limits (e.g. Avnish, Satish)..."
+                placeholder={t.searchLimitsPlaceholder}
                 value={limitSearch}
                 onChange={(e) => setLimitSearch(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
@@ -224,6 +224,7 @@ export default function App() {
                 </button>
               )}
             </div>
+
 
             <div className="space-y-2.5">
               {filteredMembers.map(m => {

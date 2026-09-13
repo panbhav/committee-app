@@ -1,10 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
 import { Award, TrendingUp, Users, ShieldAlert, Sparkles } from 'lucide-react';
 
 export default function AnnualMeetingModal() {
-  const { loans, members, monthlyUnit } = useApp();
+  const { loans, members, monthlyUnit, t } = useApp();
 
   // Calculate annual pool profit
   // Total loans interest earned in 1 year:
@@ -46,30 +46,30 @@ export default function AnnualMeetingModal() {
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4 text-amber-400" />
           <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
-            Annual February General Meeting
+            {t.annualMeetingTitle}
           </span>
         </div>
-        <h2 className="text-xl font-black text-white">Profit & Commission Distribution</h2>
+        <h2 className="text-xl font-black text-white">{t.annualMeetingTitle}</h2>
         <p className="text-xs text-slate-400 mt-0.5">
-          Based on the 7% Fixed Pool Return & 6% Guarantor Incentive rules
+          {t.annualMeetingSubtitle}
         </p>
 
         {/* Big numbers row */}
         <div className="grid grid-cols-2 gap-2 mt-4">
           <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800">
-            <span className="text-[10px] text-slate-400 block uppercase">7% Pool Dividend:</span>
+            <span className="text-[10px] text-slate-400 block uppercase">{t.poolDividend}:</span>
             <span className="text-base font-extrabold text-emerald-400">
               {formatINR(perMemberPoolDividend)}
             </span>
-            <span className="text-[10px] text-slate-500 block">Equal share per member</span>
+            <span className="text-[10px] text-slate-500 block">{t.equalShare}</span>
           </div>
 
           <div className="bg-slate-950/70 p-3 rounded-2xl border border-slate-800">
-            <span className="text-[10px] text-slate-400 block uppercase">Total Outer Guaranteed:</span>
+            <span className="text-[10px] text-slate-400 block uppercase">{t.totalOuterGuaranteed}:</span>
             <span className="text-base font-extrabold text-amber-400">
               {formatINR(totalOuterPrincipal)}
             </span>
-            <span className="text-[10px] text-slate-500 block">Earning 6% Commission</span>
+            <span className="text-[10px] text-slate-500 block">{t.earning6Commission}</span>
           </div>
         </div>
       </div>
@@ -78,10 +78,11 @@ export default function AnnualMeetingModal() {
       <div className="space-y-2">
         <div className="flex justify-between items-center px-1">
           <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            Member February Payout Sheet
+            {t.memberPayoutSheet}
           </span>
           <span className="text-[11px] text-slate-400">15 Members</span>
         </div>
+
 
         <div className="space-y-2">
           {memberCommissions
