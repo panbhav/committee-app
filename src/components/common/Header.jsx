@@ -194,9 +194,18 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Factory Reset */}
+            {/* Logout and Factory Reset */}
             <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
-              <span className="text-[11px] text-slate-500">Reset demo state:</span>
+              <button
+                onClick={() => {
+                  localStorage.removeItem('comm_logged_in');
+                  window.location.reload();
+                }}
+                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-950/40 border border-amber-800/40 px-3 py-1 rounded-lg transition"
+              >
+                🚪 Logout / Switch
+              </button>
+
               <button
                 onClick={() => {
                   if (confirm("Reset data back to September defaults?")) {
@@ -216,3 +225,4 @@ export default function Header() {
     </>
   );
 }
+

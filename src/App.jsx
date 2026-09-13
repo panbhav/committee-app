@@ -10,11 +10,16 @@ import DisburseLoanModal from './components/admin/DisburseLoanModal';
 import MemberLoanRequestModal from './components/member/MemberLoanRequestModal';
 import PendingLoanRequestsModal from './components/admin/PendingLoanRequestsModal';
 import FundManagerModal from './components/admin/FundManagerModal';
+import LoginScreen from './components/common/LoginScreen';
 import { formatINR } from './utils/loanCalculator';
 import { Users, FileText, Plus, Search, Bell } from 'lucide-react';
 
 export default function App() {
-  const { currentUser, isSuperAdmin, loans, members, getMemberLimits, loanRequests, t } = useApp();
+  const { currentUser, isSuperAdmin, loans, members, getMemberLimits, loanRequests, currentOuterLoanId, t } = useApp();
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return localStorage.getItem('comm_logged_in') === 'true';
+  });
+
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'loans' | 'limits' | 'annual'
   const [isDisburseOpen, setIsDisburseOpen] = useState(false);
   const [isMemberRequestOpen, setIsMemberRequestOpen] = useState(false);
@@ -23,9 +28,19 @@ export default function App() {
   const [loanSearch, setLoanSearch] = useState('');
   const [limitSearch, setLimitSearch] = useState('');
 
+  // If not logged in, show LoginScreen
+  if (!isLoggedIn) {
+    return (
+      <LoginScreen
+        onLoginSuccess={() => {
+          localStorage.setItem('comm_logged_in', 'true');
+          setIsLoggedIn(true);
+        }}
+      />
+    );
+  }
 
-
-  // If viewing as an Outsider (currentUser is null)
+  // If viewing as an Outsider (currentUser is null, but currentOuterLoanId is set)
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col max-w-md mx-auto relative border-x border-slate-900 shadow-2xl">
@@ -36,6 +51,7 @@ export default function App() {
       </div>
     );
   }
+
 
   // Filter Loans by loan ID, borrower name, or guarantor
   const filteredLoans = loans.filter(l => {
