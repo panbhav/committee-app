@@ -1,10 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
 import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock } from 'lucide-react';
 
 export default function MemberDashboard({ onOpenNewLoan }) {
-  const { currentUser, getMemberBill, getMemberLimits, payments, loans } = useApp();
+  const { currentUser, getMemberBill, getMemberLimits, payments, loans, t } = useApp();
 
   if (!currentUser) return null;
 
@@ -33,27 +33,27 @@ export default function MemberDashboard({ onOpenNewLoan }) {
           <div>
             <div className="flex items-center gap-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950/80 border border-indigo-800/50 px-2 py-0.5 rounded-full">
-                Partner Member Portal
+                {t.memberPortal}
               </span>
               {currentUser.role === 'admin' && (
                 <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-950/80 border border-amber-800/50 px-2 py-0.5 rounded-full">
-                  Super Admin
+                  {t.adminBadge}
                 </span>
               )}
             </div>
             <h2 className="text-2xl font-black text-white mt-1">
-              Namaste, {currentUser.name}! 👋
+              {t.namaste}, {currentUser.name}! 👋
             </h2>
           </div>
 
           <div className="text-right">
             {isPaid ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2.5 py-1 rounded-full">
-                <CheckCircle className="w-3.5 h-3.5" /> Deposit Received
+                <CheckCircle className="w-3.5 h-3.5" /> {t.depositReceived}
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-800/50 px-2.5 py-1 rounded-full">
-                <Clock className="w-3.5 h-3.5" /> Pending Deposit
+                <Clock className="w-3.5 h-3.5" /> {t.pendingDeposit}
               </span>
             )}
           </div>
@@ -62,19 +62,19 @@ export default function MemberDashboard({ onOpenNewLoan }) {
         {/* Monthly Bill Breakdown Box */}
         <div className="bg-slate-950/70 border border-slate-800/80 rounded-2xl p-3.5 mt-3 space-y-2 text-xs">
           <div className="flex justify-between text-slate-300">
-            <span>Guaranteed Outer Kishts ({bill.outerLoans.length} loans):</span>
+            <span>{t.guaranteedOuterKishts} ({bill.outerLoans.length} loans):</span>
             <span className="font-bold text-white">{formatINR(bill.outerTotal)}</span>
           </div>
           <div className="flex justify-between text-slate-300">
-            <span>Personal Self Kisht ({bill.selfLoans.length} loans):</span>
+            <span>{t.personalSelfKisht} ({bill.selfLoans.length} loans):</span>
             <span className="font-bold text-white">{formatINR(bill.selfTotal)}</span>
           </div>
           <div className="flex justify-between text-slate-300">
-            <span>Monthly Unit Savings:</span>
+            <span>{t.monthlyUnitSavings}:</span>
             <span className="font-bold text-white">{formatINR(bill.monthlyUnit)}</span>
           </div>
           <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-sm">
-            <span className="font-black text-slate-200">TOTAL YOU MUST BRING:</span>
+            <span className="font-black text-slate-200">{t.totalYouMustBring}</span>
             <span className="text-xl font-black text-indigo-400">{formatINR(bill.totalDue)}</span>
           </div>
         </div>
@@ -83,14 +83,14 @@ export default function MemberDashboard({ onOpenNewLoan }) {
       {/* Limits Gauge Meters */}
       <div className="bg-slate-900 border border-slate-800 rounded-3xl p-4 space-y-3.5 shadow-md">
         <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center justify-between">
-          <span>Your Risk Limits</span>
+          <span>{t.yourRiskLimits}</span>
           <span className="text-[10px] text-slate-500 font-normal">Cap control</span>
         </h3>
 
         {/* Personal Limit */}
         <div>
           <div className="flex justify-between text-xs mb-1 font-medium">
-            <span className="text-slate-400">Personal Limit (₹2 Lakhs)</span>
+            <span className="text-slate-400">{t.personalLimit}</span>
             <span className="text-white">
               {formatINR(limits.selfUsed)} Used • <span className="text-emerald-400 font-bold">{formatINR(limits.selfLeft)} Left</span>
             </span>
@@ -106,7 +106,7 @@ export default function MemberDashboard({ onOpenNewLoan }) {
         {/* Outer Guarantee Limit */}
         <div>
           <div className="flex justify-between text-xs mb-1 font-medium">
-            <span className="text-slate-400">Outer Guarantee Limit (₹8 Lakhs)</span>
+            <span className="text-slate-400">{t.outerGuaranteeLimit}</span>
             <span className="text-white">
               {formatINR(limits.outerUsed)} Used • <span className="text-amber-400 font-bold">{formatINR(limits.outerLeft)} Left</span>
             </span>
@@ -119,6 +119,7 @@ export default function MemberDashboard({ onOpenNewLoan }) {
           </div>
         </div>
       </div>
+
 
       {/* Loans Sub-tabs: Outer vs Self */}
       <div className="space-y-2.5">

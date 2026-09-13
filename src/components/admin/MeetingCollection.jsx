@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
@@ -17,7 +17,9 @@ export default function MeetingCollection({ onOpenNewLoan }) {
     recordPartialPayment,
     markAllPaid,
     isSuperAdmin,
+    t,
   } = useApp();
+
 
   const [activeModalMember, setActiveModalMember] = useState(null);
   const [shortInput, setShortInput] = useState('');
@@ -66,12 +68,12 @@ export default function MeetingCollection({ onOpenNewLoan }) {
         <div className="flex justify-between items-start mb-3">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2 py-0.5 rounded-full">
-              September Meeting Cashflow
+              {t.meetingCashflow}
             </span>
             <div className="text-2xl font-black text-white mt-1">
               {formatINR(stats.totalExpected)}
             </div>
-            <span className="text-xs text-slate-400">Total Expected Monthly Collection</span>
+            <span className="text-xs text-slate-400">{t.totalExpectedMonthlyCollection}</span>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -81,7 +83,7 @@ export default function MeetingCollection({ onOpenNewLoan }) {
                 className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-2xl flex items-center gap-1.5 shadow-lg shadow-emerald-900/30 active:scale-95 transition"
               >
                 <PlusCircle className="w-4 h-4" />
-                <span>New Loan</span>
+                <span>{t.newLoan}</span>
               </button>
             )}
           </div>
@@ -90,14 +92,14 @@ export default function MeetingCollection({ onOpenNewLoan }) {
         {/* Mini Stats Bar */}
         <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-800/80">
           <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800/60">
-            <span className="text-[10px] text-slate-400 block font-medium">Collected So Far:</span>
+            <span className="text-[10px] text-slate-400 block font-medium">{t.collectedSoFar}:</span>
             <span className="text-sm font-bold text-emerald-400">{formatINR(stats.totalCollected)}</span>
-            <span className="text-[10px] text-slate-500 block">{stats.paidCount} of 15 Deposited</span>
+            <span className="text-[10px] text-slate-500 block">{stats.paidCount} / 15 {t.filterPaid}</span>
           </div>
           <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800/60">
-            <span className="text-[10px] text-slate-400 block font-medium">Pending Recovery:</span>
+            <span className="text-[10px] text-slate-400 block font-medium">{t.pendingRecovery}:</span>
             <span className="text-sm font-bold text-amber-400">{formatINR(Math.max(0, stats.totalExpected - stats.totalCollected))}</span>
-            <span className="text-[10px] text-slate-500 block">{stats.pendingCount} Pending Members</span>
+            <span className="text-[10px] text-slate-500 block">{stats.pendingCount} {t.filterPending}</span>
           </div>
         </div>
 
@@ -113,7 +115,7 @@ export default function MeetingCollection({ onOpenNewLoan }) {
               className="w-full bg-slate-800 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs font-bold py-2 rounded-xl flex items-center justify-center gap-1.5 active:scale-98 transition"
             >
               <CheckCheck className="w-4 h-4 text-emerald-400" />
-              <span>One-Tap: Mark All 15 as Paid</span>
+              <span>{t.markAllPaid}</span>
             </button>
           )}
 
@@ -124,14 +126,14 @@ export default function MeetingCollection({ onOpenNewLoan }) {
               className="flex-1 bg-emerald-950/50 hover:bg-emerald-900/50 border border-emerald-800/50 text-emerald-300 text-[11px] font-bold py-1.5 rounded-xl flex items-center justify-center gap-1.5 transition"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Download Excel Bahikhata</span>
+              <span>{t.downloadExcel}</span>
             </button>
             <button
               onClick={handleExportPDF}
               className="flex-1 bg-sky-950/50 hover:bg-sky-900/50 border border-sky-800/50 text-sky-300 text-[11px] font-bold py-1.5 rounded-xl flex items-center justify-center gap-1.5 transition"
             >
               <FileDown className="w-3.5 h-3.5 text-sky-400" />
-              <span>Download PDF</span>
+              <span>{t.downloadPDF}</span>
             </button>
           </div>
         </div>
@@ -142,7 +144,7 @@ export default function MeetingCollection({ onOpenNewLoan }) {
         <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           type="text"
-          placeholder="Search member name (e.g. Harish, Manoj)..."
+          placeholder={t.searchMemberPlaceholder}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
@@ -156,6 +158,7 @@ export default function MeetingCollection({ onOpenNewLoan }) {
           </button>
         )}
       </div>
+
 
       {/* Filter Tabs */}
       <div className="flex items-center justify-between px-1">

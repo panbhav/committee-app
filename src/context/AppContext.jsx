@@ -1,15 +1,32 @@
-﻿import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { INITIAL_MEMBERS, INITIAL_LOANS } from '../data/initialData';
+import { translations } from '../data/translations';
 import { calculateKisht, calculateSecurityFee } from '../utils/loanCalculator';
 
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
+  // Language: 'hi' (Hindi) or 'en' (English)
+  const [lang, setLang] = useState(() => {
+    return localStorage.getItem('comm_lang') || 'hi'; // Default Hindi for user-friendliness!
+  });
+
+  const t = translations[lang] || translations.en;
+
+  const toggleLanguage = () => {
+    setLang(prev => {
+      const next = prev === 'hi' ? 'en' : 'hi';
+      localStorage.setItem('comm_lang', next);
+      return next;
+    });
+  };
+
   // Persistence via localStorage
   const [members, setMembers] = useState(() => {
     const saved = localStorage.getItem('comm_members');
     return saved ? JSON.parse(saved) : INITIAL_MEMBERS;
   });
+
 
   const [loans, setLoans] = useState(() => {
     const saved = localStorage.getItem('comm_loans');
@@ -334,6 +351,9 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
+      lang,
+      t,
+      toggleLanguage,
       members,
       loans,
       monthlyUnit,

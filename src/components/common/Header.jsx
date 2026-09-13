@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { Shield, UserCheck, ChevronDown, RefreshCw, History } from 'lucide-react';
 import ActivityLogsModal from './ActivityLogsModal';
@@ -14,7 +14,10 @@ export default function Header() {
     isSuperAdmin,
     meetingMonth,
     resetToFactory,
-    auditLogs
+    auditLogs,
+    lang,
+    t,
+    toggleLanguage
   } = useApp();
 
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -33,7 +36,7 @@ export default function Header() {
             </div>
             <div>
               <h1 className="text-sm font-bold text-white tracking-tight leading-tight">
-                Committee Portal
+                {t.appTitle}
               </h1>
               <p className="text-[10px] font-medium text-slate-400">
                 {meetingMonth}
@@ -41,22 +44,32 @@ export default function Header() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            {/* Hindi / English Toggle Button */}
+            <button
+              onClick={toggleLanguage}
+              className="px-2.5 py-1 rounded-full text-xs font-bold border transition bg-emerald-950/60 border-emerald-700/50 text-emerald-300 hover:bg-emerald-900/50"
+              title="Switch Language / भाषा बदलें"
+            >
+              {lang === 'hi' ? '🇮🇳 हिंदी' : '🇬🇧 ENG'}
+            </button>
+
             {/* Logs Button */}
             <button
               onClick={() => setShowLogsModal(true)}
-              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1.5 rounded-full text-xs font-semibold text-slate-200 transition"
+              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded-full text-xs font-semibold text-slate-200 transition"
               title="View Complete Activity Logs"
             >
               <History className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-[11px]">{auditLogs.length}</span>
+              <span className="text-[10px]">{auditLogs.length}</span>
             </button>
 
             {/* Active User Switcher Pill */}
             <button
               onClick={() => setShowSwitchModal(true)}
-              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1.5 rounded-full transition-all text-xs font-semibold text-slate-200"
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded-full transition-all text-xs font-semibold text-slate-200"
             >
+
               {isSuperAdmin ? (
                 <span className="flex items-center gap-1 text-amber-400 font-bold">
                   <Shield className="w-3.5 h-3.5" />

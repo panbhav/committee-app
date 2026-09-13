@@ -1,12 +1,15 @@
-﻿import React from 'react';
+import React from 'react';
 import { Home, Users, FileText, Calendar } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
 
 export default function BottomNav({ activeTab, setActiveTab, isSuperAdmin }) {
+  const { t } = useApp();
+
   const tabs = [
-    { id: 'home', label: 'Meeting', icon: Home },
-    { id: 'loans', label: 'Loans', icon: FileText },
-    { id: 'limits', label: 'Limits', icon: Users },
-    { id: 'annual', label: 'Annual Feb', icon: Calendar },
+    { id: 'home', label: t.tabMeeting, icon: Home },
+    { id: 'loans', label: t.tabLoans, icon: FileText },
+    { id: 'limits', label: t.tabLimits, icon: Users },
+    { id: 'annual', label: t.tabAnnual, icon: Calendar },
   ];
 
   return (
@@ -32,3 +35,4 @@ export default function BottomNav({ activeTab, setActiveTab, isSuperAdmin }) {
     </nav>
   );
 }
+
