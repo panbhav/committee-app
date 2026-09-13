@@ -26,11 +26,10 @@ export function AppProvider({ children }) {
     return saved ? saved : 'September 2026';
   });
 
-  // Payments log for current meeting month: { [memberId]: { status: 'paid' | 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 } }
+  // Payments log for current meeting month
   const [payments, setPayments] = useState(() => {
     const saved = localStorage.getItem('comm_payments');
     if (saved) return JSON.parse(saved);
-    // Default initial state: all pending except a couple for demonstration
     const initial = {};
     INITIAL_MEMBERS.forEach(m => {
       initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
@@ -38,14 +37,29 @@ export function AppProvider({ children }) {
     return initial;
   });
 
-  // Current Active User (for role-based switching)
-  // Default: Narendra (Admin)
+  // Full Activity / Audit Log: [{ id, timestamp, actor, action, details, previousState, targetMemberId }]
+  const [auditLogs, setAuditLogs] = useState(() => {
+    const saved = localStorage.getItem('comm_audit_logs');
+    if (saved) return JSON.parse(saved);
+    return [
+      {
+        id: 'init-1',
+        timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+        actor: 'SYSTEM',
+        action: 'MEETING_INITIALIZED',
+        details: 'September 2026 meeting initialized with 15 members & preloaded loan data.',
+        canRollback: false
+      }
+    ];
+  });
+
+  // Current Active User
   const [currentUser, setCurrentUser] = useState(() => {
     return INITIAL_MEMBERS.find(m => m.name === 'NARENDRA') || INITIAL_MEMBERS[0];
   });
 
-  // Current Selected Outer Borrower (for Outsider Passbook view)
-  const [currentOuterLoanId, setCurrentOuterLoanId] = useState(408); // Sanju Saini default
+  // Current Selected Outer Borrower
+  const [currentOuterLoanId, setCurrentOuterLoanId] = useState(408);
 
   useEffect(() => {
     localStorage.setItem('comm_members', JSON.stringify(members));
@@ -66,6 +80,24 @@ export function AppProvider({ children }) {
   useEffect(() => {
     localStorage.setItem('comm_payments', JSON.stringify(payments));
   }, [payments]);
+
+  useEffect(() => {
+    localStorage.setItem('comm_audit_logs', JSON.stringify(auditLogs));
+  }, [auditLogs]);
+
+  // Helper to add an audit log entry
+  const addLog = (action, details, canRollback = false, rollbackData = null) => {
+    const newEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true }),
+      actor: currentUser ? currentUser.name : 'ADMIN',
+      action,
+      details,
+      canRollback,
+      rollbackData
+    };
+    setAuditLogs(prev => [newEntry, ...prev]);
+  };
 
   // Compute bill per member for the current month
   const getMemberBill = (memberName) => {
@@ -138,28 +170,47 @@ export function AppProvider({ children }) {
     };
   };
 
-  // Mark a member as paid / unpaid
+  // Mark a member as paid / unpaid with Undo & Audit Trail
   const toggleMemberPaid = (memberId) => {
-    setPayments(prev => {
-      const current = prev[memberId] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
-      const newStatus = current.status === 'paid' ? 'pending' : 'paid';
-      const member = members.find(m => m.id === memberId);
-      const bill = member ? getMemberBill(member.name) : { totalDue: 0 };
+    const member = members.find(m => m.id === memberId);
+    if (!member) return;
+    const current = payments[memberId] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
+    const newStatus = current.status === 'paid' ? 'pending' : 'paid';
+    const bill = getMemberBill(member.name);
 
-      return {
-        ...prev,
-        [memberId]: {
-          ...current,
-          status: newStatus,
-          deposit: newStatus === 'paid' ? bill.totalDue : 0,
-          shortAmount: 0
-        }
-      };
-    });
+    setPayments(prev => ({
+      ...prev,
+      [memberId]: {
+        ...current,
+        status: newStatus,
+        deposit: newStatus === 'paid' ? bill.totalDue : 0,
+        shortAmount: 0
+      }
+    }));
+
+    if (newStatus === 'paid') {
+      addLog(
+        'MARKED_PAID',
+        `Marked ${member.name} as fully PAID (₹${bill.totalDue.toLocaleString()}).`,
+        true,
+        { type: 'payment', memberId, previousState: current }
+      );
+    } else {
+      addLog(
+        'REVERTED_PAID',
+        `Reverted ${member.name} back to PENDING.`,
+        true,
+        { type: 'payment', memberId, previousState: current }
+      );
+    }
   };
 
-  // Record custom payment (partial / short)
+  // Record custom payment (partial / short) with Audit Trail
   const recordPartialPayment = (memberId, depositAmount, shortAmount, extraAmount) => {
+    const member = members.find(m => m.id === memberId);
+    if (!member) return;
+    const current = payments[memberId] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
+
     setPayments(prev => ({
       ...prev,
       [memberId]: {
@@ -169,10 +220,18 @@ export function AppProvider({ children }) {
         extraAmount: Number(extraAmount)
       }
     }));
+
+    addLog(
+      'RECORDED_PARTIAL',
+      `Updated ${member.name}: Deposit ₹${depositAmount.toLocaleString()}${shortAmount > 0 ? `, Short ₹${shortAmount.toLocaleString()}` : ''}${extraAmount > 0 ? `, Extra ₹${extraAmount.toLocaleString()}` : ''}.`,
+      true,
+      { type: 'payment', memberId, previousState: current }
+    );
   };
 
-  // One-tap mark all paid
+  // One-tap mark all paid with Audit Trail
   const markAllPaid = () => {
+    const previousPayments = { ...payments };
     const newPayments = {};
     members.forEach(m => {
       const bill = getMemberBill(m.name);
@@ -184,9 +243,37 @@ export function AppProvider({ children }) {
       };
     });
     setPayments(newPayments);
+
+    addLog(
+      'MARKED_ALL_PAID',
+      'One-tap: Marked all 15 members as fully paid for the meeting.',
+      true,
+      { type: 'all_payments', previousPayments }
+    );
   };
 
-  // Disburse a brand new loan
+  // Rollback a past action from log
+  const rollbackAction = (logEntry) => {
+    if (!logEntry.rollbackData) return;
+
+    if (logEntry.rollbackData.type === 'payment') {
+      const { memberId, previousState } = logEntry.rollbackData;
+      setPayments(prev => ({
+        ...prev,
+        [memberId]: previousState
+      }));
+      addLog('ROLLBACK', `Undid action: ${logEntry.action} (${logEntry.details})`, false);
+    } else if (logEntry.rollbackData.type === 'all_payments') {
+      setPayments(logEntry.rollbackData.previousPayments);
+      addLog('ROLLBACK', `Undid: One-tap mark all paid. Restored previous states.`, false);
+    } else if (logEntry.rollbackData.type === 'new_loan') {
+      const { loanId } = logEntry.rollbackData;
+      setLoans(prev => prev.filter(l => l.id !== loanId));
+      addLog('ROLLBACK', `Cancelled loan #${loanId} and restored limits.`, false);
+    }
+  };
+
+  // Disburse a brand new loan with Audit Trail
   const disburseLoan = ({ borrowerName, borrowerPhone, guarantor, type, principal }) => {
     const p = Number(principal);
     const kisht = calculateKisht(p, type);
@@ -208,6 +295,14 @@ export function AppProvider({ children }) {
     };
 
     setLoans(prev => [newLoan, ...prev]);
+
+    addLog(
+      'LOAN_DISBURSED',
+      `Disbursed new ${type.toUpperCase()} loan #${nextId} to ${newLoan.borrowerName} for ₹${p.toLocaleString()} (Guarantor: ${newLoan.guarantor}, Kisht: ₹${kisht.toLocaleString()}/mo).`,
+      true,
+      { type: 'new_loan', loanId: nextId }
+    );
+
     return newLoan;
   };
 
@@ -223,6 +318,16 @@ export function AppProvider({ children }) {
       initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
     });
     setPayments(initial);
+    setAuditLogs([
+      {
+        id: 'init-reset',
+        timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+        actor: 'DEVELOPER',
+        action: 'FACTORY_RESET',
+        details: 'Reset application data back to default September state.',
+        canRollback: false
+      }
+    ]);
   };
 
   const isSuperAdmin = currentUser && (currentUser.name === 'NARENDRA' || currentUser.name === 'HARISH');
@@ -236,6 +341,7 @@ export function AppProvider({ children }) {
       meetingMonth,
       setMeetingMonth,
       payments,
+      auditLogs,
       currentUser,
       setCurrentUser,
       currentOuterLoanId,
@@ -247,6 +353,7 @@ export function AppProvider({ children }) {
       toggleMemberPaid,
       recordPartialPayment,
       markAllPaid,
+      rollbackAction,
       disburseLoan,
       resetToFactory
     }}>

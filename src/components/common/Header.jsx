@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Shield, UserCheck, ChevronDown, RefreshCw } from 'lucide-react';
+import { Shield, UserCheck, ChevronDown, RefreshCw, History } from 'lucide-react';
+import ActivityLogsModal from './ActivityLogsModal';
 
 export default function Header() {
   const {
@@ -12,17 +13,19 @@ export default function Header() {
     setCurrentOuterLoanId,
     isSuperAdmin,
     meetingMonth,
-    resetToFactory
+    resetToFactory,
+    auditLogs
   } = useApp();
 
   const [showSwitchModal, setShowSwitchModal] = useState(false);
+  const [showLogsModal, setShowLogsModal] = useState(false);
 
   // Outer loans list for switcher
   const outerLoans = loans.filter(l => l.type === 'outer');
 
   return (
     <>
-      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3">
+      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-slate-950 font-black text-sm shadow-md">
@@ -38,32 +41,50 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Active User Switcher Pill */}
-          <button
-            onClick={() => setShowSwitchModal(true)}
-            className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1.5 rounded-full transition-all text-xs font-semibold text-slate-200"
-          >
-            {isSuperAdmin ? (
-              <span className="flex items-center gap-1 text-amber-400 font-bold">
-                <Shield className="w-3.5 h-3.5" />
-                {currentUser?.name || 'Admin'}
-              </span>
-            ) : currentUser ? (
-              <span className="flex items-center gap-1 text-emerald-400">
-                <UserCheck className="w-3.5 h-3.5" />
-                {currentUser.name}
-              </span>
-            ) : (
-              <span className="text-sky-400">
-                Outsider View
-              </span>
-            )}
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Logs Button */}
+            <button
+              onClick={() => setShowLogsModal(true)}
+              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1.5 rounded-full text-xs font-semibold text-slate-200 transition"
+              title="View Complete Activity Logs"
+            >
+              <History className="w-3.5 h-3.5 text-indigo-400" />
+              <span className="text-[11px]">{auditLogs.length}</span>
+            </button>
+
+            {/* Active User Switcher Pill */}
+            <button
+              onClick={() => setShowSwitchModal(true)}
+              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2.5 py-1.5 rounded-full transition-all text-xs font-semibold text-slate-200"
+            >
+              {isSuperAdmin ? (
+                <span className="flex items-center gap-1 text-amber-400 font-bold">
+                  <Shield className="w-3.5 h-3.5" />
+                  {currentUser?.name || 'Admin'}
+                </span>
+              ) : currentUser ? (
+                <span className="flex items-center gap-1 text-emerald-400">
+                  <UserCheck className="w-3.5 h-3.5" />
+                  {currentUser.name}
+                </span>
+              ) : (
+                <span className="text-sky-400">
+                  Outsider View
+                </span>
+              )}
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Role / User Switcher Modal (For Developer & Testing) */}
+      {/* Activity Logs Modal */}
+      <ActivityLogsModal
+        isOpen={showLogsModal}
+        onClose={() => setShowLogsModal(false)}
+      />
+
+      {/* Role / User Switcher Modal */}
       {showSwitchModal && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
