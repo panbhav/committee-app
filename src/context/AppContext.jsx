@@ -50,13 +50,24 @@ export function AppProvider({ children }) {
   });
 
 
+  const [meetingDate, setMeetingDate] = useState(() => {
+    const saved = localStorage.getItem('comm_meeting_date');
+    return saved ? saved : '10 Sep 2026';
+  });
+
+  const getFormattedTimestamp = () => {
+    const d = new Date();
+    return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
+           d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  };
+
   // Payments log for current meeting month
   const [payments, setPayments] = useState(() => {
     const saved = localStorage.getItem('comm_payments');
     if (saved) return JSON.parse(saved);
     const initial = {};
     INITIAL_MEMBERS.forEach(m => {
-      initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
+      initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0, paidAt: null, paidBy: null };
     });
     return initial;
   });
@@ -67,11 +78,35 @@ export function AppProvider({ children }) {
     if (saved) return JSON.parse(saved);
     return [
       {
-        id: 'init-1',
-        timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-        actor: 'SYSTEM',
-        action: 'MEETING_INITIALIZED',
-        details: 'September 2026 meeting initialized with 15 members & preloaded loan data.',
+        id: 'log-sep-3',
+        timestamp: '10 Sep 2026, 07:30 PM',
+        actor: 'NARENDRA (Admin)',
+        action: 'MEETING_OPENED',
+        details: 'September 2026 Monthly General Meeting in session at Narendra residence.',
+        canRollback: false
+      },
+      {
+        id: 'log-sep-2',
+        timestamp: '10 Sep 2026, 06:45 PM',
+        actor: 'HARISH (Admin)',
+        action: 'FUND_HEALTH_CHECK',
+        details: 'Liquidity check verified: ₹1,50,000 opening reserve + ₹5,84,902 expected collections.',
+        canRollback: false
+      },
+      {
+        id: 'log-aug-1',
+        timestamp: '10 Aug 2026, 08:30 PM',
+        actor: 'NARENDRA (Admin)',
+        action: 'MEETING_CONCLUDED',
+        details: 'August 2026 meeting completed with 100% attendance and ₹5,84,902 recovery.',
+        canRollback: false
+      },
+      {
+        id: 'log-aug-2',
+        timestamp: '10 Aug 2026, 07:15 PM',
+        actor: 'HARISH (Admin)',
+        action: 'LOAN_DISBURSED',
+        details: 'Loan #459 disbursed for ₹1,00,000 with 16% flat interest and 12-month tenure.',
         canRollback: false
       }
     ];
@@ -99,7 +134,6 @@ export function AppProvider({ children }) {
     localStorage.setItem('comm_members', JSON.stringify(members));
   }, [members]);
 
-
   useEffect(() => {
     localStorage.setItem('comm_loans', JSON.stringify(loans));
   }, [loans]);
@@ -116,6 +150,9 @@ export function AppProvider({ children }) {
     localStorage.setItem('comm_meeting_month', meetingMonth);
   }, [meetingMonth]);
 
+  useEffect(() => {
+    localStorage.setItem('comm_meeting_date', meetingDate);
+  }, [meetingDate]);
 
   useEffect(() => {
     localStorage.setItem('comm_payments', JSON.stringify(payments));
@@ -129,7 +166,7 @@ export function AppProvider({ children }) {
   const addLog = (action, details, canRollback = false, rollbackData = null) => {
     const newEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true }),
+      timestamp: getFormattedTimestamp(),
       actor: currentUser ? currentUser.name : 'ADMIN',
       action,
       details,
@@ -217,6 +254,8 @@ export function AppProvider({ children }) {
     const current = payments[memberId] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
     const newStatus = current.status === 'paid' ? 'pending' : 'paid';
     const bill = getMemberBill(member.name);
+    const timestampNow = getFormattedTimestamp();
+    const actorName = currentUser ? currentUser.name : 'ADMIN';
 
     setPayments(prev => ({
       ...prev,
@@ -224,7 +263,9 @@ export function AppProvider({ children }) {
         ...current,
         status: newStatus,
         deposit: newStatus === 'paid' ? bill.totalDue : 0,
-        shortAmount: 0
+        shortAmount: 0,
+        paidAt: newStatus === 'paid' ? timestampNow : null,
+        paidBy: newStatus === 'paid' ? actorName : null
       }
     }));
 
@@ -250,6 +291,8 @@ export function AppProvider({ children }) {
     const member = members.find(m => m.id === memberId);
     if (!member) return;
     const current = payments[memberId] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
+    const timestampNow = getFormattedTimestamp();
+    const actorName = currentUser ? currentUser.name : 'ADMIN';
 
     setPayments(prev => ({
       ...prev,
@@ -257,7 +300,9 @@ export function AppProvider({ children }) {
         status: shortAmount > 0 ? 'short' : 'paid',
         deposit: Number(depositAmount),
         shortAmount: Number(shortAmount),
-        extraAmount: Number(extraAmount)
+        extraAmount: Number(extraAmount),
+        paidAt: timestampNow,
+        paidBy: actorName
       }
     }));
 
@@ -271,6 +316,8 @@ export function AppProvider({ children }) {
 
   // One-tap mark all paid with Audit Trail
   const markAllPaid = () => {
+    const timestampNow = getFormattedTimestamp();
+    const actorName = currentUser ? currentUser.name : 'ADMIN';
     const previousPayments = { ...payments };
     const newPayments = {};
     members.forEach(m => {
@@ -279,7 +326,9 @@ export function AppProvider({ children }) {
         status: 'paid',
         deposit: bill.totalDue,
         shortAmount: 0,
-        extraAmount: 0
+        extraAmount: 0,
+        paidAt: timestampNow,
+        paidBy: actorName
       };
     });
     setPayments(newPayments);
@@ -439,8 +488,10 @@ export function AppProvider({ children }) {
       availableCashFund,
       setAvailableCashFund,
       meetingMonth,
-
       setMeetingMonth,
+      meetingDate,
+      setMeetingDate,
+      getFormattedTimestamp,
       payments,
       auditLogs,
       loanRequests,
@@ -448,7 +499,6 @@ export function AppProvider({ children }) {
       approveLoanRequest,
       rejectLoanRequest,
       currentUser,
-
       setCurrentUser,
       currentOuterLoanId,
       setCurrentOuterLoanId,

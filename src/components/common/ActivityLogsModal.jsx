@@ -90,9 +90,9 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
                       </span>
                     </div>
 
-                    <span className="text-[10px] text-slate-500 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {log.timestamp}
+                    <span className="text-[10px] text-slate-300 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-lg flex items-center gap-1.5 shadow-sm font-medium">
+                      <Clock className="w-3 h-3 text-indigo-400 flex-shrink-0" />
+                      <span>{log.timestamp}</span>
                     </span>
                   </div>
 

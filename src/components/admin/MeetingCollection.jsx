@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
-import { CheckCircle2, Clock, AlertCircle, PlusCircle, CheckCheck, FileSpreadsheet, FileDown, Search, Wallet } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, PlusCircle, CheckCheck, FileSpreadsheet, FileDown, Search, Wallet, Calendar } from 'lucide-react';
 
 export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) {
 
@@ -11,6 +11,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
     loans,
     payments,
     meetingMonth,
+    meetingDate,
     getMemberBill,
     getMeetingStats,
     getMemberLimits,
@@ -68,9 +69,15 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
       <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-4 shadow-xl">
         <div className="flex justify-between items-start mb-3">
           <div>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2 py-0.5 rounded-full">
-              {t.meetingCashflow}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2 py-0.5 rounded-full">
+                {t.meetingCashflow}
+              </span>
+              <span className="text-[10px] font-bold text-slate-300 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full flex items-center gap-1">
+                <Calendar className="w-2.5 h-2.5 text-emerald-400" />
+                {meetingDate}
+              </span>
+            </div>
             <div className="text-2xl font-black text-white mt-1">
               {formatINR(stats.totalExpected)}
             </div>
@@ -242,6 +249,25 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
                       <div className="text-[11px] text-slate-400">
                         {t.outer}: <span className="text-slate-300 font-medium">{formatINR(bill.outerTotal)}</span> • {t.self}: <span className="text-slate-300 font-medium">{formatINR(bill.selfTotal)}</span>
                       </div>
+                      {/* Event Date & Time Tracking */}
+                      {isPaid && p.paidAt && (
+                        <div className="text-[10px] text-emerald-400 flex items-center gap-1 mt-1 font-medium bg-emerald-950/40 border border-emerald-900/40 px-2 py-0.5 rounded-lg w-fit">
+                          <Clock className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                          <span>{t.paidAt}: {p.paidAt} {p.paidBy ? `(${p.paidBy})` : ''}</span>
+                        </div>
+                      )}
+                      {isShort && p.paidAt && (
+                        <div className="text-[10px] text-amber-400 flex items-center gap-1 mt-1 font-medium bg-amber-950/40 border border-amber-900/40 px-2 py-0.5 rounded-lg w-fit">
+                          <Clock className="w-3 h-3 text-amber-400 flex-shrink-0" />
+                          <span>{t.paidAt}: {p.paidAt} • {t.short}: {formatINR(p.shortAmount)}</span>
+                        </div>
+                      )}
+                      {!isPaid && !isShort && (
+                        <div className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                          <Clock className="w-3 h-3 text-slate-600 flex-shrink-0" />
+                          <span>{t.due}: {meetingDate}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

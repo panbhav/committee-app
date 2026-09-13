@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { formatINR } from '../../utils/loanCalculator';
+import { formatINR, getLoanTimeline } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
-import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown } from 'lucide-react';
+import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown, Calendar } from 'lucide-react';
 
 
 export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahikhata }) {
@@ -60,13 +60,25 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
 
           <div className="text-right">
             {isPaid ? (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2.5 py-1 rounded-full">
-                <CheckCircle className="w-3.5 h-3.5" /> {t.depositReceived}
-              </span>
+              <div>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2.5 py-1 rounded-full">
+                  <CheckCircle className="w-3.5 h-3.5" /> {t.depositReceived}
+                </span>
+                {p.paidAt && (
+                  <span className="text-[10px] text-emerald-400/90 block mt-1 font-medium">
+                    🕒 {p.paidAt}
+                  </span>
+                )}
+              </div>
             ) : (
-              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-800/50 px-2.5 py-1 rounded-full">
-                <Clock className="w-3.5 h-3.5" /> {t.pendingDeposit}
-              </span>
+              <div>
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-950/80 border border-amber-800/50 px-2.5 py-1 rounded-full">
+                  <Clock className="w-3.5 h-3.5" /> {t.pendingDeposit}
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-1">
+                  {t.due}: 10 Sep 2026
+                </span>
+              </div>
             )}
           </div>
         </div>
@@ -167,34 +179,41 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                 You have not guaranteed any outer loans yet.
               </div>
             ) : (
-              bill.outerLoans.map(l => (
-                <div
-                  key={l.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-xs"
-                >
-                  <div>
-                    <div className="font-bold text-sm text-white">
-                      #{l.id} {l.borrowerName}
+              bill.outerLoans.map(l => {
+                const timeline = getLoanTimeline(l.currentMonth, l.totalMonths);
+                return (
+                  <div
+                    key={l.id}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <div className="font-bold text-sm text-white">
+                        #{l.id} {l.borrowerName}
+                      </div>
+                      <div className="text-slate-400 text-[11px] mt-0.5 space-y-0.5">
+                        <div className="text-indigo-300 font-medium flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-indigo-400" />
+                          <span>{timeline.startMonth} — {timeline.endMonth}</span>
+                        </div>
+                        <div>Month {l.currentMonth} of {l.totalMonths} • Principal: {formatINR(l.principal)}</div>
+                      </div>
                     </div>
-                    <div className="text-slate-400 text-[11px] mt-0.5">
-                      Month {l.currentMonth} of {l.totalMonths} • Principal: {formatINR(l.principal)}
-                    </div>
-                  </div>
 
-                  <div className="text-right flex flex-col items-end gap-1">
-                    <span className="text-sm font-extrabold text-amber-400">
-                      {formatINR(l.monthlyKisht)}
-                    </span>
-                    <button
-                      onClick={() => sendWhatsAppReminder(l.borrowerName, l.monthlyKisht, l.currentMonth)}
-                      className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-lg active:scale-95"
-                    >
-                      <MessageSquare className="w-3 h-3" />
-                      Remind
-                    </button>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <span className="text-sm font-extrabold text-amber-400">
+                        {formatINR(l.monthlyKisht)}
+                      </span>
+                      <button
+                        onClick={() => sendWhatsAppReminder(l.borrowerName, l.monthlyKisht, l.currentMonth)}
+                        className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-lg active:scale-95"
+                      >
+                        <MessageSquare className="w-3 h-3" />
+                        Remind
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         ) : (
@@ -205,30 +224,37 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                 No active personal loans.
               </div>
             ) : (
-              bill.selfLoans.map(l => (
-                <div
-                  key={l.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-xs"
-                >
-                  <div>
-                    <div className="font-bold text-sm text-white">
-                      Personal Loan #{l.id}
+              bill.selfLoans.map(l => {
+                const timeline = getLoanTimeline(l.currentMonth, l.totalMonths);
+                return (
+                  <div
+                    key={l.id}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-xs"
+                  >
+                    <div>
+                      <div className="font-bold text-sm text-white">
+                        Personal Loan #{l.id}
+                      </div>
+                      <div className="text-slate-400 text-[11px] mt-0.5 space-y-0.5">
+                        <div className="text-emerald-300 font-medium flex items-center gap-1">
+                          <Calendar className="w-3 h-3 text-emerald-400" />
+                          <span>{timeline.startMonth} — {timeline.endMonth}</span>
+                        </div>
+                        <div>Kisht {l.currentMonth} of {l.totalMonths} (10% Interest)</div>
+                      </div>
                     </div>
-                    <div className="text-slate-400 text-[11px] mt-0.5">
-                      Kisht {l.currentMonth} of {l.totalMonths} (10% Interest)
-                    </div>
-                  </div>
 
-                  <div className="text-right">
-                    <span className="text-sm font-extrabold text-emerald-400">
-                      {formatINR(l.monthlyKisht)} / mo
-                    </span>
-                    <span className="text-[10px] text-slate-500 block">
-                      Principal: {formatINR(l.principal)}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-sm font-extrabold text-emerald-400">
+                        {formatINR(l.monthlyKisht)} / mo
+                      </span>
+                      <span className="text-[10px] text-slate-500 block">
+                        Principal: {formatINR(l.principal)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
