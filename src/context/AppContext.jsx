@@ -38,10 +38,17 @@ export function AppProvider({ children }) {
     return saved ? Number(saved) : 1000;
   });
 
+  // Cash Reserve / Opening Balance in committee bank or safe
+  const [availableCashFund, setAvailableCashFund] = useState(() => {
+    const saved = localStorage.getItem('comm_cash_fund');
+    return saved ? Number(saved) : 150000; // default ₹1.5L reserve
+  });
+
   const [meetingMonth, setMeetingMonth] = useState(() => {
     const saved = localStorage.getItem('comm_meeting_month');
     return saved ? saved : 'September 2026';
   });
+
 
   // Payments log for current meeting month
   const [payments, setPayments] = useState(() => {
@@ -102,8 +109,13 @@ export function AppProvider({ children }) {
   }, [monthlyUnit]);
 
   useEffect(() => {
+    localStorage.setItem('comm_cash_fund', availableCashFund.toString());
+  }, [availableCashFund]);
+
+  useEffect(() => {
     localStorage.setItem('comm_meeting_month', meetingMonth);
   }, [meetingMonth]);
+
 
   useEffect(() => {
     localStorage.setItem('comm_payments', JSON.stringify(payments));
@@ -424,7 +436,10 @@ export function AppProvider({ children }) {
       loans,
       monthlyUnit,
       setMonthlyUnit,
+      availableCashFund,
+      setAvailableCashFund,
       meetingMonth,
+
       setMeetingMonth,
       payments,
       auditLogs,

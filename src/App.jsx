@@ -9,6 +9,7 @@ import AnnualMeetingModal from './components/admin/AnnualMeetingModal';
 import DisburseLoanModal from './components/admin/DisburseLoanModal';
 import MemberLoanRequestModal from './components/member/MemberLoanRequestModal';
 import PendingLoanRequestsModal from './components/admin/PendingLoanRequestsModal';
+import FundManagerModal from './components/admin/FundManagerModal';
 import { formatINR } from './utils/loanCalculator';
 import { Users, FileText, Plus, Search, Bell } from 'lucide-react';
 
@@ -18,8 +19,10 @@ export default function App() {
   const [isDisburseOpen, setIsDisburseOpen] = useState(false);
   const [isMemberRequestOpen, setIsMemberRequestOpen] = useState(false);
   const [isPendingRequestsOpen, setIsPendingRequestsOpen] = useState(false);
+  const [isFundManagerOpen, setIsFundManagerOpen] = useState(false);
   const [loanSearch, setLoanSearch] = useState('');
   const [limitSearch, setLimitSearch] = useState('');
+
 
 
   // If viewing as an Outsider (currentUser is null)
@@ -78,12 +81,16 @@ export default function App() {
                   </span>
                 </div>
               )}
-              <MeetingCollection onOpenNewLoan={() => setIsDisburseOpen(true)} />
+              <MeetingCollection
+                onOpenNewLoan={() => setIsDisburseOpen(true)}
+                onOpenFundManager={() => setIsFundManagerOpen(true)}
+              />
             </>
           ) : (
             <MemberDashboard onOpenNewLoan={() => setIsMemberRequestOpen(true)} />
           )
         )}
+
 
 
         {/* TAB 2: LOANS SCHEDULE */}
@@ -270,7 +277,14 @@ export default function App() {
         isOpen={isPendingRequestsOpen}
         onClose={() => setIsPendingRequestsOpen(false)}
       />
+
+      {/* Smart Fund & Liquidity Manager Modal */}
+      <FundManagerModal
+        isOpen={isFundManagerOpen}
+        onClose={() => setIsFundManagerOpen(false)}
+      />
     </div>
   );
 }
+
 

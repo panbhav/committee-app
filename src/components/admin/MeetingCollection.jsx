@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
-import { CheckCircle2, Clock, AlertCircle, PlusCircle, CheckCheck, FileSpreadsheet, FileDown, Search } from 'lucide-react';
+import { CheckCircle2, Clock, AlertCircle, PlusCircle, CheckCheck, FileSpreadsheet, FileDown, Search, Wallet } from 'lucide-react';
 
-export default function MeetingCollection({ onOpenNewLoan }) {
+export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) {
+
   const {
     members,
     loans,
@@ -77,6 +78,15 @@ export default function MeetingCollection({ onOpenNewLoan }) {
           </div>
 
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={onOpenFundManager}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold px-2.5 py-2 rounded-2xl flex items-center gap-1 border border-slate-700 shadow transition"
+              title="Fund & Liquidity Health"
+            >
+              <Wallet className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Fund Health</span>
+            </button>
+
             {isSuperAdmin && (
               <button
                 onClick={onOpenNewLoan}
@@ -87,6 +97,7 @@ export default function MeetingCollection({ onOpenNewLoan }) {
               </button>
             )}
           </div>
+
         </div>
 
         {/* Mini Stats Bar */}
