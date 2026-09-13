@@ -1,10 +1,21 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
-import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock } from 'lucide-react';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown } from 'lucide-react';
+
 
 export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahikhata }) {
-  const { currentUser, getMemberBill, getMemberLimits, payments, loans, t } = useApp();
+  const { currentUser, getMemberBill, getMemberLimits, payments, loans, members, meetingMonth, t } = useApp();
+
+  const handleExportExcel = () => {
+    exportToExcel({ members, loans, payments, meetingMonth, getMemberBill, getMemberLimits });
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF({ members, loans, payments, meetingMonth, getMemberBill });
+  };
+
 
 
   if (!currentUser) return null;
@@ -258,8 +269,28 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
             <span>Meeting Bahikhata</span>
           </button>
         </div>
+
+        {/* 1-Click Excel & PDF Downloads */}
+        <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="py-2 px-3 bg-emerald-950/50 hover:bg-emerald-900/60 border border-emerald-800/50 text-emerald-300 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Download Excel</span>
+          </button>
+
+          <button
+            onClick={handleExportPDF}
+            className="py-2 px-3 bg-sky-950/50 hover:bg-sky-900/60 border border-sky-800/50 text-sky-300 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 transition"
+          >
+            <FileDown className="w-3.5 h-3.5 text-sky-400" />
+            <span>Download PDF</span>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
+
 
