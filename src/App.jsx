@@ -11,6 +11,7 @@ import MemberLoanRequestModal from './components/member/MemberLoanRequestModal';
 import PendingLoanRequestsModal from './components/admin/PendingLoanRequestsModal';
 import FundManagerModal from './components/admin/FundManagerModal';
 import LoginScreen from './components/common/LoginScreen';
+import ActivityLogsModal from './components/common/ActivityLogsModal';
 import { formatINR } from './utils/loanCalculator';
 import { Users, FileText, Plus, Search, Bell } from 'lucide-react';
 
@@ -25,8 +26,11 @@ export default function App() {
   const [isMemberRequestOpen, setIsMemberRequestOpen] = useState(false);
   const [isPendingRequestsOpen, setIsPendingRequestsOpen] = useState(false);
   const [isFundManagerOpen, setIsFundManagerOpen] = useState(false);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
+  const [showBahikhataModal, setShowBahikhataModal] = useState(false);
   const [loanSearch, setLoanSearch] = useState('');
   const [limitSearch, setLimitSearch] = useState('');
+
 
   // If not logged in, show LoginScreen
   if (!isLoggedIn) {
@@ -103,9 +107,14 @@ export default function App() {
               />
             </>
           ) : (
-            <MemberDashboard onOpenNewLoan={() => setIsMemberRequestOpen(true)} />
+            <MemberDashboard
+              onOpenNewLoan={() => setIsMemberRequestOpen(true)}
+              onOpenLogs={() => setIsLogsOpen(true)}
+              onOpenBahikhata={() => setShowBahikhataModal(true)}
+            />
           )
         )}
+
 
 
 
@@ -299,8 +308,68 @@ export default function App() {
         isOpen={isFundManagerOpen}
         onClose={() => setIsFundManagerOpen(false)}
       />
+
+      {/* Activity Logs Modal (Available to both Admins and Members) */}
+      <ActivityLogsModal
+        isOpen={isLogsOpen}
+        onClose={() => setIsLogsOpen(false)}
+      />
+
+      {/* Full Committee Meeting Bahikhata Modal (For Members) */}
+      {showBahikhataModal && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-3">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-3 max-h-[88vh] flex flex-col">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-2.5 flex-shrink-0">
+              <div>
+                <h3 className="text-sm font-bold text-white">Full Committee Bahikhata</h3>
+                <p className="text-[10px] text-slate-400">All 15 members' collection & status</p>
+              </div>
+              <button
+                onClick={() => setShowBahikhataModal(false)}
+                className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+              {members.map(m => {
+                const bill = getMemberBill(m.name);
+                const p = payments[m.id] || { status: 'pending', deposit: 0 };
+                const isPaid = p.status === 'paid';
+
+                return (
+                  <div key={m.id} className="bg-slate-950 border border-slate-800/90 rounded-2xl p-3 flex justify-between items-center">
+                    <div>
+                      <div className="font-bold text-white flex items-center gap-1">
+                        {m.name}
+                        {m.role === 'admin' && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1 py-0.2 rounded font-bold">ADMIN</span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Outer: ₹{bill.outerTotal.toLocaleString()} • Self: ₹{bill.selfTotal.toLocaleString()} • Unit: ₹{bill.monthlyUnit}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-extrabold text-white text-sm">₹{bill.totalDue.toLocaleString()}</div>
+                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                        isPaid ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-400'
+                      }`}>
+                        {isPaid ? '✓ PAID' : 'PENDING'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
 
 
