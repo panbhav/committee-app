@@ -1,25 +1,29 @@
 ﻿import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
-import { CheckCircle2, Clock, AlertCircle, Share2, PlusCircle, CheckCheck } from 'lucide-react';
+import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
+import { CheckCircle2, Clock, AlertCircle, PlusCircle, CheckCheck, FileSpreadsheet, FileDown, Search } from 'lucide-react';
 
 export default function MeetingCollection({ onOpenNewLoan }) {
   const {
     members,
+    loans,
     payments,
+    meetingMonth,
     getMemberBill,
     getMeetingStats,
+    getMemberLimits,
     toggleMemberPaid,
     recordPartialPayment,
     markAllPaid,
     isSuperAdmin,
-    currentUser
   } = useApp();
 
   const [activeModalMember, setActiveModalMember] = useState(null);
   const [shortInput, setShortInput] = useState('');
   const [extraInput, setExtraInput] = useState('');
   const [filter, setFilter] = useState('all'); // 'all' | 'pending' | 'paid'
+  const [searchQuery, setSearchQuery] = useState('');
 
   const stats = getMeetingStats();
 
@@ -35,13 +39,25 @@ export default function MeetingCollection({ onOpenNewLoan }) {
     setExtraInput('');
   };
 
+  // Filter & Search Logic
   const filteredMembers = members.filter(m => {
+    const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
     const p = payments[m.id];
     const isPaid = p && (p.status === 'paid' || p.status === 'short');
     if (filter === 'paid') return isPaid;
     if (filter === 'pending') return !isPaid;
     return true;
   });
+
+  const handleExportExcel = () => {
+    exportToExcel({ members, loans, payments, meetingMonth, getMemberBill, getMemberLimits });
+  };
+
+  const handleExportPDF = () => {
+    exportToPDF({ members, loans, payments, meetingMonth, getMemberBill });
+  };
 
   return (
     <div className="space-y-4 pb-20">
@@ -58,15 +74,17 @@ export default function MeetingCollection({ onOpenNewLoan }) {
             <span className="text-xs text-slate-400">Total Expected Monthly Collection</span>
           </div>
 
-          {isSuperAdmin && (
-            <button
-              onClick={onOpenNewLoan}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-2xl flex items-center gap-1.5 shadow-lg shadow-emerald-900/30 active:scale-95 transition"
-            >
-              <PlusCircle className="w-4 h-4" />
-              <span>New Loan</span>
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {isSuperAdmin && (
+              <button
+                onClick={onOpenNewLoan}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-2 rounded-2xl flex items-center gap-1.5 shadow-lg shadow-emerald-900/30 active:scale-95 transition"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>New Loan</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Mini Stats Bar */}
@@ -83,9 +101,9 @@ export default function MeetingCollection({ onOpenNewLoan }) {
           </div>
         </div>
 
-        {/* Super Admin Quick "Mark All Paid" Button */}
-        {isSuperAdmin && (
-          <div className="mt-3 pt-3 border-t border-slate-800 flex gap-2">
+        {/* Action Row: Export Buttons + Mark All Paid */}
+        <div className="mt-3 pt-3 border-t border-slate-800 flex flex-wrap gap-2">
+          {isSuperAdmin && (
             <button
               onClick={() => {
                 if (confirm('Mark all 15 members as fully paid for September?')) {
@@ -97,7 +115,45 @@ export default function MeetingCollection({ onOpenNewLoan }) {
               <CheckCheck className="w-4 h-4 text-emerald-400" />
               <span>One-Tap: Mark All 15 as Paid</span>
             </button>
+          )}
+
+          {/* Bahikhata Export Buttons (Available to All!) */}
+          <div className="flex w-full gap-2">
+            <button
+              onClick={handleExportExcel}
+              className="flex-1 bg-emerald-950/50 hover:bg-emerald-900/50 border border-emerald-800/50 text-emerald-300 text-[11px] font-bold py-1.5 rounded-xl flex items-center justify-center gap-1.5 transition"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Download Excel Bahikhata</span>
+            </button>
+            <button
+              onClick={handleExportPDF}
+              className="flex-1 bg-sky-950/50 hover:bg-sky-900/50 border border-sky-800/50 text-sky-300 text-[11px] font-bold py-1.5 rounded-xl flex items-center justify-center gap-1.5 transition"
+            >
+              <FileDown className="w-3.5 h-3.5 text-sky-400" />
+              <span>Download PDF</span>
+            </button>
           </div>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <input
+          type="text"
+          placeholder="Search member name (e.g. Harish, Manoj)..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-white"
+          >
+            ✕
+          </button>
         )}
       </div>
 
@@ -125,111 +181,117 @@ export default function MeetingCollection({ onOpenNewLoan }) {
         </div>
 
         <span className="text-[11px] text-slate-400">
-          {isSuperAdmin ? 'Tap buttons to record' : 'Live read-only list'}
+          {filteredMembers.length} displayed
         </span>
       </div>
 
       {/* Member Collection Cards */}
       <div className="space-y-2.5">
-        {filteredMembers.map(m => {
-          const bill = getMemberBill(m.name);
-          const p = payments[m.id] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
-          const isPaid = p.status === 'paid';
-          const isShort = p.status === 'short';
+        {filteredMembers.length === 0 ? (
+          <div className="p-8 text-center text-slate-500 text-xs bg-slate-900/40 rounded-2xl border border-slate-800">
+            No members found matching "{searchQuery}".
+          </div>
+        ) : (
+          filteredMembers.map(m => {
+            const bill = getMemberBill(m.name);
+            const p = payments[m.id] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
+            const isPaid = p.status === 'paid';
+            const isShort = p.status === 'short';
 
-          return (
-            <div
-              key={m.id}
-              className={`border rounded-2xl p-3.5 transition-all ${
-                isPaid
-                  ? 'bg-slate-900/60 border-emerald-900/40'
-                  : isShort
-                  ? 'bg-slate-900 border-amber-900/50'
-                  : 'bg-slate-900 border-slate-800'
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-black text-xs ${
-                    isPaid ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-300'
-                  }`}>
-                    {m.name.substring(0, 2)}
+            return (
+              <div
+                key={m.id}
+                className={`border rounded-2xl p-3.5 transition-all ${
+                  isPaid
+                    ? 'bg-slate-900/60 border-emerald-900/40'
+                    : isShort
+                    ? 'bg-slate-900 border-amber-900/50'
+                    : 'bg-slate-900 border-slate-800'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className={`w-9 h-9 rounded-2xl flex items-center justify-center font-black text-xs ${
+                      isPaid ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-800 text-slate-300'
+                    }`}>
+                      {m.name.substring(0, 2)}
+                    </div>
+                    <div>
+                      <div className="font-bold text-sm text-white flex items-center gap-1.5">
+                        {m.name}
+                        {m.role === 'admin' && (
+                          <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold border border-amber-500/30">
+                            ADMIN
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-400">
+                        Outer: <span className="text-slate-300 font-medium">{formatINR(bill.outerTotal)}</span> • Self: <span className="text-slate-300 font-medium">{formatINR(bill.selfTotal)}</span>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* Status Badge */}
                   <div>
-                    <div className="font-bold text-sm text-white flex items-center gap-1.5">
-                      {m.name}
-                      {m.role === 'admin' && (
-                        <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-bold border border-amber-500/30">
-                          ADMIN
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-slate-400">
-                      Outer: <span className="text-slate-300 font-medium">{formatINR(bill.outerTotal)}</span> • Self: <span className="text-slate-300 font-medium">{formatINR(bill.selfTotal)}</span>
-                    </div>
+                    {isPaid ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded-full">
+                        <CheckCircle2 className="w-3 h-3" /> Paid
+                      </span>
+                    ) : isShort ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-950/80 text-amber-400 border border-amber-800/60 px-2 py-0.5 rounded-full">
+                        <AlertCircle className="w-3 h-3" /> Short: {formatINR(p.shortAmount)}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
+                        <Clock className="w-3 h-3" /> Pending
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {/* Status Badge */}
-                <div>
-                  {isPaid ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-2 py-0.5 rounded-full">
-                      <CheckCircle2 className="w-3 h-3" /> Paid
-                    </span>
-                  ) : isShort ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-amber-950/80 text-amber-400 border border-amber-800/60 px-2 py-0.5 rounded-full">
-                      <AlertCircle className="w-3 h-3" /> Short: {formatINR(p.shortAmount)}
-                    </span>
+                {/* Bottom Action / Details Row */}
+                <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-medium">Total Payable:</span>
+                    <span className="text-base font-extrabold text-white">{formatINR(bill.totalDue)}</span>
+                  </div>
+
+                  {/* Action Buttons for Super Admins */}
+                  {isSuperAdmin ? (
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => toggleMemberPaid(m.id)}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition active:scale-95 ${
+                          isPaid
+                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/30'
+                        }`}
+                      >
+                        {isPaid ? 'Undo' : 'Mark Paid'}
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveModalMember(m);
+                          setShortInput('');
+                          setExtraInput('');
+                        }}
+                        className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-[11px]"
+                        title="Record Short / Extra"
+                      >
+                        Short/Extra
+                      </button>
+                    </div>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">
-                      <Clock className="w-3 h-3" /> Pending
-                    </span>
+                    <div className="text-[11px] text-slate-400 italic">
+                      Unit: {formatINR(bill.monthlyUnit)} included
+                    </div>
                   )}
                 </div>
               </div>
-
-              {/* Bottom Action / Details Row */}
-              <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between text-xs">
-                <div>
-                  <span className="text-[10px] text-slate-400 block font-medium">Total Payable:</span>
-                  <span className="text-base font-extrabold text-white">{formatINR(bill.totalDue)}</span>
-                </div>
-
-                {/* Action Buttons for Super Admins */}
-                {isSuperAdmin ? (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => toggleMemberPaid(m.id)}
-                      className={`px-3 py-1.5 rounded-xl font-bold transition active:scale-95 ${
-                        isPaid
-                          ? 'bg-slate-800 hover:bg-slate-700 text-slate-300'
-                          : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/30'
-                      }`}
-                    >
-                      {isPaid ? 'Undo' : 'Mark Paid'}
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setActiveModalMember(m);
-                        setShortInput('');
-                        setExtraInput('');
-                      }}
-                      className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl font-semibold text-[11px]"
-                      title="Record Short / Extra"
-                    >
-                      Short/Extra
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-[11px] text-slate-400 italic">
-                    Unit: {formatINR(bill.monthlyUnit)} included
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Partial / Short Modal */}

@@ -8,12 +8,14 @@ import OuterPassbook from './components/outsider/OuterPassbook';
 import AnnualMeetingModal from './components/admin/AnnualMeetingModal';
 import DisburseLoanModal from './components/admin/DisburseLoanModal';
 import { formatINR } from './utils/loanCalculator';
-import { Users, FileText, Plus } from 'lucide-react';
+import { Users, FileText, Plus, Search } from 'lucide-react';
 
 export default function App() {
   const { currentUser, isSuperAdmin, loans, members, getMemberLimits } = useApp();
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'loans' | 'limits' | 'annual'
   const [isDisburseOpen, setIsDisburseOpen] = useState(false);
+  const [loanSearch, setLoanSearch] = useState('');
+  const [limitSearch, setLimitSearch] = useState('');
 
   // If viewing as an Outsider (currentUser is null)
   if (!currentUser) {
@@ -26,6 +28,21 @@ export default function App() {
       </div>
     );
   }
+
+  // Filter Loans by loan ID, borrower name, or guarantor
+  const filteredLoans = loans.filter(l => {
+    const q = loanSearch.toLowerCase();
+    return (
+      l.id.toString().includes(q) ||
+      l.borrowerName.toLowerCase().includes(q) ||
+      l.guarantor.toLowerCase().includes(q)
+    );
+  });
+
+  // Filter Members by name
+  const filteredMembers = members.filter(m =>
+    m.name.toLowerCase().includes(limitSearch.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col max-w-md mx-auto relative border-x border-slate-900 shadow-2xl">
@@ -60,36 +77,62 @@ export default function App() {
               )}
             </div>
 
-            <div className="space-y-2">
-              {loans.map(l => (
-                <div
-                  key={l.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex justify-between items-center text-xs"
+            {/* Quick Loan Search */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search by loan # (e.g. 408), borrower, or guarantor..."
+                value={loanSearch}
+                onChange={(e) => setLoanSearch(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+              {loanSearch && (
+                <button
+                  onClick={() => setLoanSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-white"
                 >
-                  <div>
-                    <div className="flex items-center gap-1.5 font-bold text-white text-sm">
-                      <span>#{l.id} {l.borrowerName}</span>
-                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                        l.type === 'self' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
-                      }`}>
-                        {l.type === 'self' ? 'SELF 10%' : 'OUTER 16%'}
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {filteredLoans.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 text-xs bg-slate-900/40 rounded-2xl border border-slate-800">
+                  No loans found matching "{loanSearch}".
+                </div>
+              ) : (
+                filteredLoans.map(l => (
+                  <div
+                    key={l.id}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex justify-between items-center text-xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5 font-bold text-white text-sm">
+                        <span>#{l.id} {l.borrowerName}</span>
+                        <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                          l.type === 'self' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
+                        }`}>
+                          {l.type === 'self' ? 'SELF 10%' : 'OUTER 16%'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 mt-0.5">
+                        Guarantor: <b className="text-slate-200">{l.guarantor}</b> • Month: <b className="text-emerald-400">{l.currentMonth}/12</b>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className="font-extrabold text-sm text-white">
+                        {formatINR(l.monthlyKisht)}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        Principal: {formatINR(l.principal)}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">
-                      Guarantor: <b className="text-slate-200">{l.guarantor}</b> • Month: <b className="text-emerald-400">{l.currentMonth}/12</b>
-                    </div>
                   </div>
-
-                  <div className="text-right">
-                    <span className="font-extrabold text-sm text-white">
-                      {formatINR(l.monthlyKisht)}
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      Principal: {formatINR(l.principal)}
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
@@ -102,8 +145,28 @@ export default function App() {
               <p className="text-xs text-slate-400">Cap: ₹2L Personal • ₹8L Outer Guarantee</p>
             </div>
 
+            {/* Quick Limit Search */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search member limits (e.g. Avnish, Satish)..."
+                value={limitSearch}
+                onChange={(e) => setLimitSearch(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              />
+              {limitSearch && (
+                <button
+                  onClick={() => setLimitSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
             <div className="space-y-2.5">
-              {members.map(m => {
+              {filteredMembers.map(m => {
                 const limits = getMemberLimits(m.name);
                 const selfPct = Math.min(100, Math.round((limits.selfUsed / limits.memberLimit) * 100));
                 const outerPct = Math.min(100, Math.round((limits.outerUsed / limits.outerLimit) * 100));
