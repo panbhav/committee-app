@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR } from '../../utils/loanCalculator';
 import { Wallet, TrendingUp, AlertTriangle, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
@@ -124,25 +124,88 @@ export default function FundManagerModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* Super Admin Control */}
+          {/* Super Admin Control: Quick Presets + Custom Input */}
           {isSuperAdmin && (
-            <div className="pt-2 border-t border-slate-800 space-y-2">
-              <label className="text-slate-300 font-semibold block">
-                Adjust Monthly Unit for This Meeting (₹):
-              </label>
+            <div className="pt-2 border-t border-slate-800 space-y-2.5">
+              <div className="flex justify-between items-center">
+                <label className="text-slate-300 font-semibold block">
+                  Set Monthly Unit / Deposit (₹):
+                </label>
+                <span className="text-[10px] text-emerald-400 font-bold">
+                  Current: {formatINR(monthlyUnit)}
+                </span>
+              </div>
+
+              {/* Quick 1-Tap Presets */}
+              <div className="grid grid-cols-4 gap-1.5 text-center">
+                <button
+                  type="button"
+                  onClick={() => setCustomUnit(500)}
+                  className={`py-1.5 rounded-xl border text-[11px] font-bold transition ${
+                    Number(customUnit) === 500
+                      ? 'bg-emerald-600 border-emerald-500 text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  ₹500
+                  <span className="block text-[8px] font-normal opacity-75">Low (Surplus)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCustomUnit(1000)}
+                  className={`py-1.5 rounded-xl border text-[11px] font-bold transition ${
+                    Number(customUnit) === 1000
+                      ? 'bg-emerald-600 border-emerald-500 text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  ₹1,000
+                  <span className="block text-[8px] font-normal opacity-75">Normal Base</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCustomUnit(2500)}
+                  className={`py-1.5 rounded-xl border text-[11px] font-bold transition ${
+                    Number(customUnit) === 2500
+                      ? 'bg-emerald-600 border-emerald-500 text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  ₹2,500
+                  <span className="block text-[8px] font-normal opacity-75">High (Demand)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setCustomUnit(5000)}
+                  className={`py-1.5 rounded-xl border text-[11px] font-bold transition ${
+                    Number(customUnit) === 5000
+                      ? 'bg-emerald-600 border-emerald-500 text-white'
+                      : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-800'
+                  }`}
+                >
+                  ₹5,000
+                  <span className="block text-[8px] font-normal opacity-75">Mega Invest</span>
+                </button>
+              </div>
+
+              {/* Custom Input */}
               <div className="flex gap-2">
                 <input
                   type="number"
                   step="500"
+                  placeholder="Enter custom ₹..."
                   value={customUnit}
                   onChange={(e) => setCustomUnit(e.target.value)}
-                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:border-emerald-500 focus:outline-none"
+                  className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white font-bold focus:border-emerald-500 focus:outline-none text-sm"
                 />
                 <button
                   onClick={handleApplyNewUnit}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition text-xs"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow transition text-xs active:scale-95"
                 >
-                  Apply
+                  Update for All 15
                 </button>
               </div>
             </div>
@@ -152,3 +215,4 @@ export default function FundManagerModal({ isOpen, onClose }) {
     </div>
   );
 }
+
