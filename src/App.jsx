@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useApp } from './context/AppContext';
 import Header from './components/common/Header';
 import BottomNav from './components/common/BottomNav';
@@ -7,15 +7,20 @@ import MemberDashboard from './components/member/MemberDashboard';
 import OuterPassbook from './components/outsider/OuterPassbook';
 import AnnualMeetingModal from './components/admin/AnnualMeetingModal';
 import DisburseLoanModal from './components/admin/DisburseLoanModal';
+import MemberLoanRequestModal from './components/member/MemberLoanRequestModal';
+import PendingLoanRequestsModal from './components/admin/PendingLoanRequestsModal';
 import { formatINR } from './utils/loanCalculator';
-import { Users, FileText, Plus, Search } from 'lucide-react';
+import { Users, FileText, Plus, Search, Bell } from 'lucide-react';
 
 export default function App() {
-  const { currentUser, isSuperAdmin, loans, members, getMemberLimits } = useApp();
+  const { currentUser, isSuperAdmin, loans, members, getMemberLimits, loanRequests, t } = useApp();
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'loans' | 'limits' | 'annual'
   const [isDisburseOpen, setIsDisburseOpen] = useState(false);
+  const [isMemberRequestOpen, setIsMemberRequestOpen] = useState(false);
+  const [isPendingRequestsOpen, setIsPendingRequestsOpen] = useState(false);
   const [loanSearch, setLoanSearch] = useState('');
   const [limitSearch, setLimitSearch] = useState('');
+
 
   // If viewing as an Outsider (currentUser is null)
   if (!currentUser) {
@@ -52,11 +57,34 @@ export default function App() {
         {/* TAB 1: HOME / MEETING */}
         {activeTab === 'home' && (
           isSuperAdmin ? (
-            <MeetingCollection onOpenNewLoan={() => setIsDisburseOpen(true)} />
+            <>
+              {/* Notification Banner if members have pending loan requests */}
+              {loanRequests.filter(r => r.status === 'pending').length > 0 && (
+                <div
+                  onClick={() => setIsPendingRequestsOpen(true)}
+                  className="mb-3 bg-gradient-to-r from-amber-950/80 to-slate-900 border border-amber-500/40 p-3 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-400 transition"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-xs animate-bounce">
+                      {loanRequests.filter(r => r.status === 'pending').length}
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white block">New Member Loan Requests</span>
+                      <span className="text-[10px] text-amber-300">Tap to review & approve</span>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-amber-400 bg-amber-950 px-2 py-1 rounded-lg border border-amber-800">
+                    Review →
+                  </span>
+                </div>
+              )}
+              <MeetingCollection onOpenNewLoan={() => setIsDisburseOpen(true)} />
+            </>
           ) : (
-            <MemberDashboard onOpenNewLoan={() => setIsDisburseOpen(true)} />
+            <MemberDashboard onOpenNewLoan={() => setIsMemberRequestOpen(true)} />
           )
         )}
+
 
         {/* TAB 2: LOANS SCHEDULE */}
         {activeTab === 'loans' && (
@@ -225,11 +253,24 @@ export default function App() {
         isSuperAdmin={isSuperAdmin}
       />
 
-      {/* Disburse Modal */}
+      {/* Disburse Modal (Admin Direct) */}
       <DisburseLoanModal
         isOpen={isDisburseOpen}
         onClose={() => setIsDisburseOpen(false)}
       />
+
+      {/* Member Loan Request Modal (For Any Member) */}
+      <MemberLoanRequestModal
+        isOpen={isMemberRequestOpen}
+        onClose={() => setIsMemberRequestOpen(false)}
+      />
+
+      {/* Pending Requests Review Modal (For Super Admin) */}
+      <PendingLoanRequestsModal
+        isOpen={isPendingRequestsOpen}
+        onClose={() => setIsPendingRequestsOpen(false)}
+      />
     </div>
   );
 }
+

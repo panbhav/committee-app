@@ -70,6 +70,12 @@ export function AppProvider({ children }) {
     ];
   });
 
+  // Member Loan Requests: [{ id, requestedBy, type, borrowerName, borrowerPhone, borrowerAddress, principal, monthlyKisht, securityFee, note, status: 'pending'|'approved'|'rejected', timestamp }]
+  const [loanRequests, setLoanRequests] = useState(() => {
+    const saved = localStorage.getItem('comm_loan_requests');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Current Active User
   const [currentUser, setCurrentUser] = useState(() => {
     return INITIAL_MEMBERS.find(m => m.name === 'NARENDRA') || INITIAL_MEMBERS[0];
@@ -79,8 +85,13 @@ export function AppProvider({ children }) {
   const [currentOuterLoanId, setCurrentOuterLoanId] = useState(408);
 
   useEffect(() => {
+    localStorage.setItem('comm_loan_requests', JSON.stringify(loanRequests));
+  }, [loanRequests]);
+
+  useEffect(() => {
     localStorage.setItem('comm_members', JSON.stringify(members));
   }, [members]);
+
 
   useEffect(() => {
     localStorage.setItem('comm_loans', JSON.stringify(loans));
@@ -290,8 +301,63 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Submit a loan request by any member
+  const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, principal, note }) => {
+    const kisht = calculateKisht(principal, type);
+    const security = calculateSecurityFee(principal, type);
+    const newRequest = {
+      id: 'req-' + Date.now(),
+      requestedBy: currentUser.name,
+      type,
+      borrowerName,
+      borrowerPhone,
+      borrowerAddress,
+      principal,
+      monthlyKisht: kisht,
+      securityFee: security,
+      note,
+      status: 'pending',
+      timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true })
+    };
+
+    setLoanRequests(prev => [newRequest, ...prev]);
+    addLog(
+      'LOAN_REQUESTED',
+      `${currentUser.name} requested new ${type.toUpperCase()} loan for ${borrowerName} (₹${principal.toLocaleString()}).`,
+      false
+    );
+  };
+
+  // Approve loan request by Super Admin
+  const approveLoanRequest = (requestId) => {
+    const req = loanRequests.find(r => r.id === requestId);
+    if (!req) return;
+
+    // Disburse the actual loan
+    disburseLoan({
+      borrowerName: req.borrowerName,
+      borrowerPhone: req.borrowerPhone,
+      guarantor: req.requestedBy,
+      type: req.type,
+      principal: req.principal
+    });
+
+    setLoanRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'approved' } : r));
+    addLog('REQUEST_APPROVED', `Admin approved loan request for ${req.borrowerName} (₹${req.principal.toLocaleString()}).`, false);
+  };
+
+  // Reject loan request by Super Admin
+  const rejectLoanRequest = (requestId) => {
+    const req = loanRequests.find(r => r.id === requestId);
+    if (!req) return;
+
+    setLoanRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r));
+    addLog('REQUEST_REJECTED', `Admin rejected loan request for ${req.borrowerName}.`, false);
+  };
+
   // Disburse a brand new loan with Audit Trail
   const disburseLoan = ({ borrowerName, borrowerPhone, guarantor, type, principal }) => {
+
     const p = Number(principal);
     const kisht = calculateKisht(p, type);
     const security = calculateSecurityFee(p, type);
@@ -362,7 +428,12 @@ export function AppProvider({ children }) {
       setMeetingMonth,
       payments,
       auditLogs,
+      loanRequests,
+      submitLoanRequest,
+      approveLoanRequest,
+      rejectLoanRequest,
       currentUser,
+
       setCurrentUser,
       currentOuterLoanId,
       setCurrentOuterLoanId,
