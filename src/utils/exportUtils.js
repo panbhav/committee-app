@@ -353,9 +353,10 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
 
   const loansData = loans.map(l => {
     const totalM = l.totalMonths || 12;
-    const paidSoFar = l.monthlyKisht * l.currentMonth;
+    const effectiveKisht = l.outsiderMonthlyKisht || l.monthlyKisht;
+    const paidSoFar = effectiveKisht * l.currentMonth;
     const remKishts = Math.max(0, totalM - l.currentMonth);
-    const balanceDue = l.monthlyKisht * remKishts;
+    const balanceDue = effectiveKisht * remKishts;
     return {
       id: `#${l.id}`,
       borrowerName: l.borrowerName,

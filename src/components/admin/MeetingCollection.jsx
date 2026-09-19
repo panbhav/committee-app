@@ -14,6 +14,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
     meetingDate,
     AVAILABLE_MONTHS,
     changeMeetingMonth,
+    monthlyUnit,
     getMemberBill,
     getMeetingStats,
     getMemberLimits,
@@ -36,7 +37,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
   const outerLoans = loans.filter(l => l.type === 'outer');
   const selfTotalKisht = selfLoans.reduce((s, l) => s + l.monthlyKisht, 0);
   const outerTotalKisht = outerLoans.reduce((s, l) => s + l.monthlyKisht, 0);
-  const totalUnits = members.length * 1000;
+  const totalUnits = members.length * (monthlyUnit || 1000);
 
   const handleSavePartial = () => {
     if (!activeModalMember) return;

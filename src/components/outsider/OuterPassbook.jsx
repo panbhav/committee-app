@@ -23,10 +23,11 @@ export default function OuterPassbook() {
   const effectiveKisht = loan.outsiderMonthlyKisht || loan.monthlyKisht;
 
   const guarantorMember = members.find(m => m.name === loan.guarantor);
-  const progressPercent = Math.round((loan.currentMonth / totalMonths) * 100);
   const totalRepayable = effectiveKisht * totalMonths;
-  const totalPaidSoFar = effectiveKisht * Math.max(0, loan.currentMonth - 1);
-  const remainingBalance = Math.max(0, totalRepayable - totalPaidSoFar);
+  const remainingKishts = Math.max(0, totalMonths - loan.currentMonth);
+  const remainingBalance = remainingKishts * effectiveKisht;
+  const totalPaidSoFar = (totalMonths - remainingKishts) * effectiveKisht;
+  const progressPercent = Math.min(100, Math.round(((loan.currentMonth || 1) / totalMonths) * 100));
 
   const timeline = getLoanTimeline(loan.currentMonth, totalMonths);
   const schedule = getInstallmentSchedule(loan.currentMonth, totalMonths);
