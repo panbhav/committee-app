@@ -461,10 +461,24 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
   // ==========================================
   // SHEET 4: ANNUAL FEBRUARY SETTLEMENT
   // ==========================================
-  const totalOuterPrincipal = loans.filter(l => l.type === 'outer').reduce((s, l) => s + l.principal, 0);
-  const totalSelfPrincipal = loans.filter(l => l.type === 'self').reduce((s, l) => s + l.principal, 0);
-  const totalPoolInterest = (totalOuterPrincipal * 0.16) + (totalSelfPrincipal * 0.10);
-  const pool7PercentDividend = totalPoolInterest * 0.4375; // 7% pool return
+  let annualConfig = null;
+  try {
+    const saved = localStorage.getItem('comm_annual_meeting_config');
+    if (saved) annualConfig = JSON.parse(saved);
+  } catch (e) {}
+
+  const useCustomAnnual = Boolean(annualConfig?.useCustomTotals);
+  const autoOuter = loans.filter(l => l.type === 'outer').reduce((s, l) => s + l.principal, 0);
+  const autoSelf = loans.filter(l => l.type === 'self').reduce((s, l) => s + l.principal, 0);
+
+  const totalOuterPrincipal = (useCustomAnnual && annualConfig?.customOuterTotal != null)
+    ? Number(annualConfig.customOuterTotal)
+    : autoOuter;
+  const totalSelfPrincipal = (useCustomAnnual && annualConfig?.customSelfTotal != null)
+    ? Number(annualConfig.customSelfTotal)
+    : autoSelf;
+
+  const pool7PercentDividend = Math.round((totalOuterPrincipal * 0.07) + (totalSelfPrincipal * 0.07));
   const perMemberPoolDividend = Math.round(pool7PercentDividend / 15);
 
   const annualHeaders = [
@@ -477,8 +491,10 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
   ];
 
   const annualData = members.map((m, idx) => {
-    const memberOuterLoans = loans.filter(l => l.type === 'outer' && l.guarantor === m.name);
-    const guaranteedAmount = memberOuterLoans.reduce((sum, l) => sum + l.principal, 0);
+    const autoGuaranteed = loans.filter(l => l.type === 'outer' && l.guarantor === m.name).reduce((sum, l) => sum + l.principal, 0);
+    const guaranteedAmount = (useCustomAnnual && annualConfig?.customMemberGuarantees?.[m.name] != null)
+      ? Number(annualConfig.customMemberGuarantees[m.name])
+      : autoGuaranteed;
     const commission = Math.round(guaranteedAmount * 0.06);
     const payout = perMemberPoolDividend + commission;
 

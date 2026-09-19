@@ -84,6 +84,20 @@ export function AppProvider({ children }) {
     return saved ? saved : '10 Sep 2026';
   });
 
+  // Annual February Meeting Loan Totals Configuration
+  const [annualMeetingConfig, setAnnualMeetingConfig] = useState(() => {
+    const saved = localStorage.getItem('comm_annual_meeting_config');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return {
+      useCustomTotals: false,
+      customSelfTotal: null,
+      customOuterTotal: null,
+      customMemberGuarantees: {}
+    };
+  });
+
   const getFormattedTimestamp = () => {
     const d = new Date();
     return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' +
@@ -191,6 +205,10 @@ export function AppProvider({ children }) {
     localStorage.setItem('comm_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
+  useEffect(() => {
+    localStorage.setItem('comm_annual_meeting_config', JSON.stringify(annualMeetingConfig));
+  }, [annualMeetingConfig]);
+
   // Push state updates to Firebase Firestore
   const syncToCloud = async (patch) => {
     try {
@@ -223,6 +241,9 @@ export function AppProvider({ children }) {
         if (d.availableCashFund !== undefined) setAvailableCashFund(d.availableCashFund);
         if (d.meetingMonth) setMeetingMonth(d.meetingMonth);
         if (d.meetingDate) setMeetingDate(d.meetingDate);
+        if (d.annualMeetingConfig && typeof d.annualMeetingConfig === 'object') {
+          setAnnualMeetingConfig(d.annualMeetingConfig);
+        }
         setCloudSyncStatus('connected');
       } else {
         // First-time seed of initial September committee data into cloud
@@ -636,6 +657,85 @@ export function AppProvider({ children }) {
     syncToCloud({ loans: updatedLoans });
   };
 
+  // Update Annual February Meeting Configuration (custom totals or auto)
+  const updateAnnualMeetingConfig = (newConfig) => {
+    setAnnualMeetingConfig(newConfig);
+    localStorage.setItem('comm_annual_meeting_config', JSON.stringify(newConfig));
+    addLog(
+      'ANNUAL_CONFIG_UPDATED',
+      `Updated Annual February Meeting loan totals configuration (Mode: ${newConfig.useCustomTotals ? 'Custom' : 'Auto'}).`,
+      false
+    );
+    syncToCloud({ annualMeetingConfig: newConfig });
+  };
+
+  // Compute Annual February Meeting Profit & Commission Statistics
+  const getAnnualMeetingStats = () => {
+    const activeSelfLoans = loans.filter(l => l.type === 'self');
+    const activeOuterLoans = loans.filter(l => l.type === 'outer');
+    const autoSelfTotal = activeSelfLoans.reduce((s, l) => s + l.principal, 0);
+    const autoOuterTotal = activeOuterLoans.reduce((s, l) => s + l.principal, 0);
+
+    const useCustom = Boolean(annualMeetingConfig?.useCustomTotals);
+    const selfTotal = (useCustom && annualMeetingConfig?.customSelfTotal != null)
+      ? Number(annualMeetingConfig.customSelfTotal)
+      : autoSelfTotal;
+    const outerTotal = (useCustom && annualMeetingConfig?.customOuterTotal != null)
+      ? Number(annualMeetingConfig.customOuterTotal)
+      : autoOuterTotal;
+
+    const totalLoansGiven = selfTotal + outerTotal;
+    const selfPoolReturn7Pct = Math.round(selfTotal * 0.07);
+    const outerPoolReturn7Pct = Math.round(outerTotal * 0.07);
+    const totalCommonPool = selfPoolReturn7Pct + outerPoolReturn7Pct;
+    const perMemberPoolDividend = Math.round(totalCommonPool / 15);
+
+    const memberPayouts = members.map(m => {
+      const selfLoansTaken = activeSelfLoans
+        .filter(l => l.borrowerName === m.name)
+        .reduce((s, l) => s + l.principal, 0);
+
+      const autoGuaranteed = activeOuterLoans
+        .filter(l => l.guarantor === m.name)
+        .reduce((s, l) => s + l.principal, 0);
+
+      const outerGuaranteed = (useCustom && annualMeetingConfig?.customMemberGuarantees?.[m.name] != null)
+        ? Number(annualMeetingConfig.customMemberGuarantees[m.name])
+        : autoGuaranteed;
+
+      const guarantorCommission = Math.round(outerGuaranteed * 0.06);
+      const totalPayout = perMemberPoolDividend + guarantorCommission;
+
+      return {
+        member: m,
+        selfLoansTaken,
+        outerGuaranteed,
+        guarantorCommission,
+        poolDividend: perMemberPoolDividend,
+        totalPayout
+      };
+    });
+
+    const totalCommissionAll = memberPayouts.reduce((s, r) => s + r.guarantorCommission, 0);
+    const totalPayoutAll = memberPayouts.reduce((s, r) => s + r.totalPayout, 0);
+
+    return {
+      useCustom,
+      selfTotal,
+      outerTotal,
+      autoSelfTotal,
+      autoOuterTotal,
+      totalLoansGiven,
+      selfPoolReturn7Pct,
+      outerPoolReturn7Pct,
+      totalCommonPool,
+      perMemberPoolDividend,
+      memberPayouts,
+      totalCommissionAll,
+      totalPayoutAll
+    };
+  };
+
   // Reset to initial data
   const resetToFactory = () => {
     localStorage.clear();
@@ -721,6 +821,9 @@ export function AppProvider({ children }) {
       attachLoanDocument,
       removeLoanDocument,
       updateLoanDocuments,
+      annualMeetingConfig,
+      updateAnnualMeetingConfig,
+      getAnnualMeetingStats,
       resetToFactory
     }}>
       {children}
