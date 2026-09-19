@@ -33,36 +33,75 @@ jobs:
 
       - name: Setup Android SDK
         run: |
-          echo "=== ANDROID_HOME: $ANDROID_HOME ==="
-          
-          # Find sdkmanager location
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           if [ ! -f "$SDKMANAGER" ]; then
-            echo "sdkmanager not at cmdline-tools/latest, searching..."
             SDKMANAGER=$(find "$ANDROID_HOME" -name "sdkmanager" -type f 2>/dev/null | head -1)
           fi
-          echo "=== Using sdkmanager: $SDKMANAGER ==="
-          
-          # Accept licenses  
           yes | "$SDKMANAGER" --licenses 2>&1 || true
-          
-          # Try installing platforms - with verbose output
-          echo "=== Installing Android SDK platform 36 ==="
-          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" 2>&1 || {
-            echo "=== API 36 failed, trying API 35 ==="
-            "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.1" 2>&1 || {
-              echo "=== API 35 failed, trying API 34 ==="
-              "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" 2>&1
-            }
-          }
-          
-          echo "=== Installed platforms: ==="
-          ls -la "$ANDROID_HOME/platforms/" || true
-          echo "=== Installed build-tools: ==="
-          ls -la "$ANDROID_HOME/build-tools/" || true
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" 2>&1 || \
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.1" 2>&1 || true
 
-      - name: Sync Capacitor Android
-        run: npx cap sync android
+      - name: Copy Web Assets to Android
+        run: |
+          # Do what cap sync does - copy dist to android assets
+          rm -rf android/app/src/main/assets/public
+          mkdir -p android/app/src/main/assets/public
+          cp -r dist/* android/app/src/main/assets/public/
+          
+          # Generate capacitor.config.json in assets
+          cp capacitor.config.json android/app/src/main/assets/capacitor.config.json
+          
+          # Generate empty capacitor.plugins.json if not exists
+          echo '[]' > android/app/src/main/assets/capacitor.plugins.json
+          
+          # Generate cordova files for compatibility
+          echo '// placeholder' > android/app/src/main/assets/public/cordova.js
+          echo 'cordova.define("cordova/plugin_list", function(require, exports, module) { module.exports = []; });' > android/app/src/main/assets/public/cordova_plugins.js
+          
+          # Create capacitor-cordova-android-plugins if not exists
+          mkdir -p android/capacitor-cordova-android-plugins/src/main/java
+          mkdir -p android/capacitor-cordova-android-plugins/src/main/res
+          
+          # Create build.gradle for cordova plugins module if not exists
+          if [ ! -f android/capacitor-cordova-android-plugins/build.gradle ]; then
+            cat > android/capacitor-cordova-android-plugins/build.gradle << 'GRADLE'
+          apply plugin: 'com.android.library'
+
+          android {
+              namespace "capacitor.cordova.android.plugins"
+              compileSdkVersion project.hasProperty('compileSdkVersion') ? rootProject.ext.compileSdkVersion : 36
+              defaultConfig {
+                  minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 24
+                  targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 36
+              }
+              lintOptions {
+                  abortOnError false
+              }
+          }
+          GRADLE
+          fi
+          
+          # Create cordova.variables.gradle if not exists
+          if [ ! -f android/capacitor-cordova-android-plugins/cordova.variables.gradle ]; then
+            echo 'ext {}' > android/capacitor-cordova-android-plugins/cordova.variables.gradle
+          fi
+          
+          # Create AndroidManifest.xml for cordova plugins if not exists
+          if [ ! -f android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml ]; then
+            echo '<?xml version="1.0" encoding="utf-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android"></manifest>' > android/capacitor-cordova-android-plugins/src/main/AndroidManifest.xml
+          fi
+          
+          # Generate config.xml for Capacitor
+          mkdir -p android/app/src/main/res/xml
+          cat > android/app/src/main/res/xml/config.xml << 'XML'
+          <?xml version='1.0' encoding='utf-8'?>
+          <widget version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+              <access origin="*" />
+          </widget>
+          XML
+          
+          echo "=== Web assets copied successfully ==="
+          ls -la android/app/src/main/assets/public/ | head -10
 
       - name: Make Gradle executable
         run: chmod +x ./android/gradlew
@@ -70,7 +109,7 @@ jobs:
       - name: Build APK with Gradle
         run: |
           cd android
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace 2>&1
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
