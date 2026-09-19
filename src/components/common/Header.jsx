@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Shield, UserCheck, ChevronDown, RefreshCw, History, LogOut } from 'lucide-react';
+import { Shield, UserCheck, ChevronDown, History, LogOut } from 'lucide-react';
 import ActivityLogsModal from './ActivityLogsModal';
 
 export default function Header() {
@@ -13,7 +13,6 @@ export default function Header() {
     setCurrentOuterLoanId,
     isSuperAdmin,
     meetingMonth,
-    resetToFactory,
     auditLogs,
     lang,
     t,
@@ -220,29 +219,17 @@ export default function Header() {
               </div>
             </div>
 
-            {/* Logout and Factory Reset */}
-            <div className="pt-2 border-t border-slate-800 flex justify-between items-center">
+            {/* Logout / Switch Session */}
+            <div className="pt-2 border-t border-slate-800">
               <button
                 onClick={() => {
                   localStorage.removeItem('comm_logged_in');
                   window.location.reload();
                 }}
-                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 bg-amber-950/40 border border-amber-800/40 px-3 py-1 rounded-lg transition"
+                className="w-full text-center text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-950/40 border border-amber-800/40 py-2 rounded-xl transition flex items-center justify-center gap-1.5"
               >
-                🚪 Logout / Switch
-              </button>
-
-              <button
-                onClick={() => {
-                  if (confirm("Reset data back to September defaults?")) {
-                    resetToFactory();
-                    setShowSwitchModal(false);
-                  }
-                }}
-                className="flex items-center gap-1 text-[11px] text-red-400 hover:text-red-300 bg-red-950/40 border border-red-900/50 px-2.5 py-1 rounded-lg"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Reset Data
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Logout / Switch User</span>
               </button>
             </div>
           </div>
