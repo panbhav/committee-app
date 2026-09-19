@@ -28,6 +28,21 @@ export function AppProvider({ children }) {
     });
   };
 
+  // Automatic cache cleanup if schema/data version changed (purges test data)
+  const DATA_VERSION = 'v2_clean_sep2026';
+  if (typeof window !== 'undefined' && localStorage.getItem('comm_app_data_version') !== DATA_VERSION) {
+    localStorage.removeItem('comm_members');
+    localStorage.removeItem('comm_loans');
+    localStorage.removeItem('comm_payments');
+    localStorage.removeItem('comm_loan_requests');
+    localStorage.removeItem('comm_audit_logs');
+    localStorage.removeItem('comm_monthly_unit');
+    localStorage.removeItem('comm_cash_fund');
+    localStorage.removeItem('comm_meeting_month');
+    localStorage.removeItem('comm_meeting_date');
+    localStorage.setItem('comm_app_data_version', DATA_VERSION);
+  }
+
   // Persistence via localStorage
   const [members, setMembers] = useState(() => {
     const saved = localStorage.getItem('comm_members');
@@ -580,20 +595,24 @@ export function AppProvider({ children }) {
   // Reset to initial data
   const resetToFactory = () => {
     localStorage.clear();
+    localStorage.setItem('comm_app_data_version', DATA_VERSION);
     setMembers(INITIAL_MEMBERS);
     setLoans(INITIAL_LOANS);
+    setLoanRequests([]);
     setMonthlyUnit(1000);
+    setAvailableCashFund(150000);
     setMeetingMonth('September 2026');
+    setMeetingDate('10 Sep 2026');
     const initial = {};
     INITIAL_MEMBERS.forEach(m => {
-      initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
+      initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0, paidAt: null, paidBy: null };
     });
     setPayments(initial);
     const resetLogs = [
       {
         id: 'init-reset',
         timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-        actor: 'ADMIN',
+        actor: currentUser?.name || 'ADMIN',
         action: 'FACTORY_RESET',
         details: 'Reset application data back to default September state.',
         canRollback: false
@@ -604,8 +623,11 @@ export function AppProvider({ children }) {
     syncToCloud({
       members: INITIAL_MEMBERS,
       loans: INITIAL_LOANS,
+      loanRequests: [],
       monthlyUnit: 1000,
+      availableCashFund: 150000,
       meetingMonth: 'September 2026',
+      meetingDate: '10 Sep 2026',
       payments: initial,
       auditLogs: resetLogs
     });
