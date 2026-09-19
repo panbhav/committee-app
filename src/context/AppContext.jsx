@@ -80,9 +80,74 @@ export function AppProvider({ children }) {
   });
 
 
+  const [meetingMonth, setMeetingMonth] = useState(() => {
+    const saved = localStorage.getItem('comm_meeting_month');
+    return saved ? saved : 'September 2026';
+  });
+
+  const [meetingDate, setMeetingDate] = useState(() => {
+    const saved = localStorage.getItem('comm_meeting_date');
+    return saved ? saved : '10 Sep 2026';
+  });
+
+  // Helper to compute default loans for any given month based on monthly timeline offset
+  const computeDefaultLoansForMonth = (targetMonth, currentLoansByMonth = null) => {
+    if (currentLoansByMonth && currentLoansByMonth[targetMonth]) {
+      return currentLoansByMonth[targetMonth];
+    }
+
+    const baseMonth = 'September 2026';
+    const baseLoans = (currentLoansByMonth && currentLoansByMonth[baseMonth]) || INITIAL_LOANS;
+
+    const baseIdx = AVAILABLE_MONTHS.indexOf(baseMonth);
+    const targetIdx = AVAILABLE_MONTHS.indexOf(targetMonth);
+
+    if (baseIdx === -1 || targetIdx === -1) {
+      return baseLoans;
+    }
+
+    const monthOffset = targetIdx - baseIdx; // e.g. Oct 2026 (9 - 8 = +1 month)
+
+    return baseLoans.map(l => {
+      const totalM = l.totalMonths || 12;
+      const newCurrent = Math.max(1, Math.min(totalM, (l.currentMonth || 1) + monthOffset));
+      return {
+        ...l,
+        currentMonth: newCurrent
+      };
+    });
+  };
+
+  // Loans stored per month so all historical & future months are preserved with automatic default kisht progression
+  const [loansByMonth, setLoansByMonth] = useState(() => {
+    const saved = localStorage.getItem('comm_loans_by_month');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') return parsed;
+      } catch (e) {}
+    }
+    const legacy = localStorage.getItem('comm_loans');
+    const initialSep = legacy ? JSON.parse(legacy) : INITIAL_LOANS;
+    return {
+      'September 2026': initialSep
+    };
+  });
+
+  // Active Loans for currently selected meeting month
   const [loans, setLoans] = useState(() => {
+    const currentMonth = localStorage.getItem('comm_meeting_month') || 'September 2026';
+    const savedByMonth = localStorage.getItem('comm_loans_by_month');
+    if (savedByMonth) {
+      try {
+        const parsed = JSON.parse(savedByMonth);
+        if (parsed[currentMonth]) return parsed[currentMonth];
+        return computeDefaultLoansForMonth(currentMonth, parsed);
+      } catch (e) {}
+    }
     const saved = localStorage.getItem('comm_loans');
-    return saved ? JSON.parse(saved) : INITIAL_LOANS;
+    if (saved && currentMonth === 'September 2026') return JSON.parse(saved);
+    return computeDefaultLoansForMonth(currentMonth, { 'September 2026': INITIAL_LOANS });
   });
 
   const [monthlyUnit, setMonthlyUnit] = useState(() => {
@@ -94,17 +159,6 @@ export function AppProvider({ children }) {
   const [availableCashFund, setAvailableCashFund] = useState(() => {
     const saved = localStorage.getItem('comm_cash_fund');
     return saved ? Number(saved) : 150000; // default ₹1.5L reserve
-  });
-
-  const [meetingMonth, setMeetingMonth] = useState(() => {
-    const saved = localStorage.getItem('comm_meeting_month');
-    return saved ? saved : 'September 2026';
-  });
-
-
-  const [meetingDate, setMeetingDate] = useState(() => {
-    const saved = localStorage.getItem('comm_meeting_date');
-    return saved ? saved : '10 Sep 2026';
   });
 
   // Annual February Meeting Loan Totals Configuration
@@ -229,6 +283,10 @@ export function AppProvider({ children }) {
   }, [meetingDate]);
 
   useEffect(() => {
+    localStorage.setItem('comm_loans_by_month', JSON.stringify(loansByMonth));
+  }, [loansByMonth]);
+
+  useEffect(() => {
     localStorage.setItem('comm_payments_by_month', JSON.stringify(paymentsByMonth));
   }, [paymentsByMonth]);
 
@@ -268,19 +326,28 @@ export function AppProvider({ children }) {
           });
           setMembers(syncedMembers);
         }
-        if (d.loans && Array.isArray(d.loans)) setLoans(d.loans);
+        if (d.loansByMonth && typeof d.loansByMonth === 'object') {
+          setLoansByMonth(d.loansByMonth);
+        }
         if (d.paymentsByMonth && typeof d.paymentsByMonth === 'object') {
           setPaymentsByMonth(d.paymentsByMonth);
         }
         if (d.meetingMonth) {
           setMeetingMonth(d.meetingMonth);
+          if (d.loansByMonth && d.loansByMonth[d.meetingMonth]) {
+            setLoans(d.loansByMonth[d.meetingMonth]);
+          } else if (d.loans && Array.isArray(d.loans)) {
+            setLoans(d.loans);
+          } else {
+            setLoans(computeDefaultLoansForMonth(d.meetingMonth, d.loansByMonth));
+          }
           if (d.payments && typeof d.payments === 'object') {
             setPayments(d.payments);
           } else if (d.paymentsByMonth && d.paymentsByMonth[d.meetingMonth]) {
             setPayments(d.paymentsByMonth[d.meetingMonth]);
           }
-        } else if (d.payments && typeof d.payments === 'object') {
-          setPayments(d.payments);
+        } else if (d.loans && Array.isArray(d.loans)) {
+          setLoans(d.loans);
         }
         if (d.auditLogs && Array.isArray(d.auditLogs)) {
           const cleanLogs = d.auditLogs.filter(isRelevantAuditLog);
@@ -441,23 +508,32 @@ export function AppProvider({ children }) {
     const newDate = `10 ${monthShort} ${year}`;
 
     const monthPayments = paymentsByMonth[newMonth] || defaultPendingPayments();
+    const monthLoans = loansByMonth[newMonth] || computeDefaultLoansForMonth(newMonth, loansByMonth);
 
     setMeetingMonth(newMonth);
     setMeetingDate(newDate);
     setPayments(monthPayments);
+    setLoans(monthLoans);
 
-    const updatedByMonth = {
+    const updatedPaymentsByMonth = {
       ...paymentsByMonth,
       [newMonth]: monthPayments
     };
-    setPaymentsByMonth(updatedByMonth);
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [newMonth]: monthLoans
+    };
+    setPaymentsByMonth(updatedPaymentsByMonth);
+    setLoansByMonth(updatedLoansByMonth);
 
     // Note: Month browsing/navigation is a UI state and is NOT logged in financial audit logs.
     syncToCloud({
       meetingMonth: newMonth,
       meetingDate: newDate,
       payments: monthPayments,
-      paymentsByMonth: updatedByMonth
+      paymentsByMonth: updatedPaymentsByMonth,
+      loans: monthLoans,
+      loansByMonth: updatedLoansByMonth
     });
   };
 
@@ -582,9 +658,20 @@ export function AppProvider({ children }) {
       setLoans(prev => prev.filter(l => l.id !== loanId));
       addLog('ROLLBACK', `Cancelled loan #${loanId} and restored limits.`, false);
     } else if (logEntry.rollbackData.type === 'loan_kisht') {
-      const { loanId, previousMonth } = logEntry.rollbackData;
-      setLoans(prev => prev.map(l => l.id === loanId ? { ...l, currentMonth: previousMonth } : l));
+      const { loanId, previousMonth, meetingMonth: targetMonth } = logEntry.rollbackData;
+      const monthToRoll = targetMonth || meetingMonth;
+      const targetLoans = (loansByMonth && loansByMonth[monthToRoll]) || loans;
+      const restored = targetLoans.map(l => l.id === loanId ? { ...l, currentMonth: previousMonth } : l);
+      if (monthToRoll === meetingMonth) {
+        setLoans(restored);
+      }
+      const updatedByMonth = {
+        ...loansByMonth,
+        [monthToRoll]: restored
+      };
+      setLoansByMonth(updatedByMonth);
       addLog('ROLLBACK', `Undid Kisht update for loan #${loanId}. Restored to Month ${previousMonth}.`, false);
+      syncToCloud({ loans: (monthToRoll === meetingMonth ? restored : loans), loansByMonth: updatedByMonth });
     }
   };
 
@@ -609,19 +696,25 @@ export function AppProvider({ children }) {
 
     setLoans(updatedLoans);
 
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [meetingMonth]: updatedLoans
+    };
+    setLoansByMonth(updatedLoansByMonth);
+
     const logEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       timestamp: getFormattedTimestamp(),
       actor: currentUser ? currentUser.name : 'ADMIN',
       action: 'KISHT_UPDATED',
-      details: `Updated Loan #${loanId} (${loan.borrowerName}): Set to Month ${clampedMonth}/${totalM} (${remaining} kishts remaining).`,
+      details: `Updated Loan #${loanId} (${loan.borrowerName}) for ${meetingMonth}: Set to Month ${clampedMonth}/${totalM} (${remaining} kishts remaining).`,
       canRollback: true,
-      rollbackData: { type: 'loan_kisht', loanId, previousMonth: loan.currentMonth }
+      rollbackData: { type: 'loan_kisht', loanId, previousMonth: loan.currentMonth, meetingMonth }
     };
     const updatedLogs = [logEntry, ...auditLogs];
     setAuditLogs(updatedLogs);
 
-    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
+    syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth, auditLogs: updatedLogs });
   };
 
   // Smart Bulk Advance: increment currentMonth by +1 for all active loans
@@ -636,6 +729,12 @@ export function AppProvider({ children }) {
 
     setLoans(updatedLoans);
 
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [meetingMonth]: updatedLoans
+    };
+    setLoansByMonth(updatedLoansByMonth);
+
     const logEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       timestamp: getFormattedTimestamp(),
@@ -647,7 +746,7 @@ export function AppProvider({ children }) {
     const updatedLogs = [logEntry, ...auditLogs];
     setAuditLogs(updatedLogs);
 
-    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
+    syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth, auditLogs: updatedLogs });
   };
 
   // Smart Bulk Revert: decrement currentMonth by -1 for all active loans
@@ -661,18 +760,24 @@ export function AppProvider({ children }) {
 
     setLoans(updatedLoans);
 
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [meetingMonth]: updatedLoans
+    };
+    setLoansByMonth(updatedLoansByMonth);
+
     const logEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       timestamp: getFormattedTimestamp(),
       actor: currentUser ? currentUser.name : 'ADMIN',
       action: 'ALL_KISHTS_REVERTED',
-      details: `Reverted all active loans by -1 kisht/month.`,
+      details: `Reverted all active loans by -1 kisht/month for ${meetingMonth}.`,
       canRollback: false
     };
     const updatedLogs = [logEntry, ...auditLogs];
     setAuditLogs(updatedLogs);
 
-    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
+    syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth, auditLogs: updatedLogs });
   };
 
   // Submit a loan request by a member
@@ -794,6 +899,12 @@ export function AppProvider({ children }) {
     const updatedLoans = [newLoan, ...loans];
     setLoans(updatedLoans);
 
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [meetingMonth]: updatedLoans
+    };
+    setLoansByMonth(updatedLoansByMonth);
+
     const logEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       timestamp: getFormattedTimestamp(),
@@ -806,7 +917,7 @@ export function AppProvider({ children }) {
     const updatedLogs = [logEntry, ...auditLogs];
     setAuditLogs(updatedLogs);
 
-    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
+    syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth, auditLogs: updatedLogs });
 
     return newLoan;
   };
@@ -821,8 +932,15 @@ export function AppProvider({ children }) {
       return l;
     });
     setLoans(updatedLoans);
+
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [meetingMonth]: updatedLoans
+    };
+    setLoansByMonth(updatedLoansByMonth);
+
     addLog('DOCUMENT_ATTACHED', `Attached security document "${document.name}" to Loan #${loanId}.`, false);
-    syncToCloud({ loans: updatedLoans });
+    syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth });
   };
 
   // Remove an attached document from a loan
@@ -835,8 +953,15 @@ export function AppProvider({ children }) {
       return l;
     });
     setLoans(updatedLoans);
+
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [meetingMonth]: updatedLoans
+    };
+    setLoansByMonth(updatedLoansByMonth);
+
     addLog('DOCUMENT_REMOVED', `Removed document from Loan #${loanId}.`, false);
-    syncToCloud({ loans: updatedLoans });
+    syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth });
   };
 
   // Update complete documents list for a loan
@@ -848,8 +973,15 @@ export function AppProvider({ children }) {
       return l;
     });
     setLoans(updatedLoans);
+
+    const updatedLoansByMonth = {
+      ...loansByMonth,
+      [meetingMonth]: updatedLoans
+    };
+    setLoansByMonth(updatedLoansByMonth);
+
     addLog('DOCUMENTS_UPDATED', `Updated security documents for Loan #${loanId}.`, false);
-    syncToCloud({ loans: updatedLoans });
+    syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth });
   };
 
   // Update Annual February Meeting Configuration (custom totals or auto)
@@ -986,6 +1118,7 @@ export function AppProvider({ children }) {
       AVAILABLE_MONTHS,
       members,
       loans,
+      loansByMonth,
       monthlyUnit,
       setMonthlyUnit,
       availableCashFund,
