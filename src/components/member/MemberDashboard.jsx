@@ -30,9 +30,9 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
   const selfPercent = Math.min(100, Math.round((limits.selfUsed / limits.memberLimit) * 100));
   const outerPercent = Math.min(100, Math.round((limits.outerUsed / limits.outerLimit) * 100));
 
-  const sendWhatsAppReminder = (borrowerName, amount, month, phone) => {
+  const sendWhatsAppReminder = (borrowerName, amount, month, totalMonths, phone) => {
     const text = encodeURIComponent(
-      `Namaste ${borrowerName} ji! Ye September committee ki kisht (${formatINR(amount)}, Mahina ${month}/12) jama karne ka reminder hai. Kripya meeting se pehle jama kar dein. Dhanyawad - ${currentUser.name}`
+      `Namaste ${borrowerName} ji! Ye September Banking Society ki kisht (${formatINR(amount)}, Mahina ${month}/${totalMonths || 12}) jama karne ka reminder hai. Kripya meeting se pehle jama kar dein. Dhanyawad - ${currentUser.name}`
     );
     const phoneNum = phone ? '91' + phone.replace(/\D/g, '') : '';
     window.open(`https://wa.me/${phoneNum}?text=${text}`, '_blank');
@@ -181,37 +181,58 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
               </div>
             ) : (
               bill.outerLoans.map(l => {
-                const timeline = getLoanTimeline(l.currentMonth, l.totalMonths);
+                const totalM = l.totalMonths || 12;
+                const timeline = getLoanTimeline(l.currentMonth, totalM);
+                const outsiderKisht = l.outsiderMonthlyKisht || l.monthlyKisht;
+                const margin = Math.max(0, outsiderKisht - l.monthlyKisht);
                 return (
                   <div
                     key={l.id}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-xs"
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs"
                   >
-                    <div>
-                      <div className="font-bold text-sm text-white">
-                        #{l.id} {l.borrowerName}
-                      </div>
-                      <div className="text-slate-400 text-[11px] mt-0.5 space-y-0.5">
-                        <div className="text-indigo-300 font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-indigo-400" />
-                          <span>{timeline.startMonth} — {timeline.endMonth}</span>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-bold text-sm text-white flex items-center gap-1.5">
+                          <span>#{l.id} {l.borrowerName}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-950 text-amber-400 border border-amber-800">
+                            {totalM}m
+                          </span>
                         </div>
-                        <div>Month {l.currentMonth} of {l.totalMonths} • Principal: {formatINR(l.principal)}</div>
+                        <div className="text-slate-400 text-[11px] mt-0.5 space-y-0.5">
+                          <div className="text-indigo-300 font-medium flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-indigo-400" />
+                            <span>{timeline.startMonth} — {timeline.endMonth}</span>
+                          </div>
+                          <div>Month {l.currentMonth} of {totalM} • Principal: {formatINR(l.principal)}</div>
+                        </div>
+                      </div>
+
+                      <div className="text-right flex flex-col items-end gap-1">
+                        <span className="text-sm font-extrabold text-amber-400">
+                          {formatINR(l.monthlyKisht)} <span className="text-[10px] font-normal text-slate-400">due</span>
+                        </span>
+                        <button
+                          onClick={() => sendWhatsAppReminder(l.borrowerName, outsiderKisht, l.currentMonth, totalM, l.borrowerPhone)}
+                          className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-lg active:scale-95 hover:bg-emerald-900/40 transition"
+                        >
+                          <MessageSquare className="w-3 h-3" />
+                          Remind ({formatINR(outsiderKisht)})
+                        </button>
                       </div>
                     </div>
 
-                    <div className="text-right flex flex-col items-end gap-1">
-                      <span className="text-sm font-extrabold text-amber-400">
-                        {formatINR(l.monthlyKisht)}
-                      </span>
-                      <button
-                        onClick={() => sendWhatsAppReminder(l.borrowerName, l.monthlyKisht, l.currentMonth, l.borrowerPhone)}
-                        className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-lg active:scale-95"
-                      >
-                        <MessageSquare className="w-3 h-3" />
-                        Remind
-                      </button>
-                    </div>
+                    {/* Rates & Margin Breakdown if Custom Rate Set */}
+                    {l.chargedRate && l.chargedRate !== l.rate && (
+                      <div className="bg-slate-950/70 p-2 rounded-xl border border-slate-800 flex justify-between items-center text-[10px]">
+                        <div>
+                          <span className="text-slate-400">Outsider Charged: </span>
+                          <b className="text-amber-300">{l.chargedRate}% ({formatINR(outsiderKisht)}/mo)</b>
+                        </div>
+                        <div className="text-emerald-400 font-bold bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-900/40">
+                          Your Profit: +{formatINR(margin)}/mo
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -226,22 +247,27 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
               </div>
             ) : (
               bill.selfLoans.map(l => {
-                const timeline = getLoanTimeline(l.currentMonth, l.totalMonths);
+                const totalM = l.totalMonths || 12;
+                const timeline = getLoanTimeline(l.currentMonth, totalM);
+                const selfRate = l.rate || (totalM === 6 ? 5 : 10);
                 return (
                   <div
                     key={l.id}
                     className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-xs"
                   >
                     <div>
-                      <div className="font-bold text-sm text-white">
-                        Personal Loan #{l.id}
+                      <div className="font-bold text-sm text-white flex items-center gap-1.5">
+                        <span>Personal Loan #{l.id}</span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                          {totalM}m
+                        </span>
                       </div>
                       <div className="text-slate-400 text-[11px] mt-0.5 space-y-0.5">
                         <div className="text-emerald-300 font-medium flex items-center gap-1">
                           <Calendar className="w-3 h-3 text-emerald-400" />
                           <span>{timeline.startMonth} — {timeline.endMonth}</span>
                         </div>
-                        <div>Kisht {l.currentMonth} of {l.totalMonths} (10% Interest)</div>
+                        <div>Kisht {l.currentMonth} of {totalM} ({selfRate}% Interest)</div>
                       </div>
                     </div>
 

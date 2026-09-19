@@ -3,11 +3,11 @@
 export const INITIAL_MEMBERS = [
   { id: 1, name: "AVNISH", phone: "6378021059", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 2, name: "GAGAN", phone: "9800000002", role: "member", memberLimit: 200000, outerLimit: 800000 },
-  { id: 3, name: "HARISH", phone: "9800000003", role: "admin", memberLimit: 200000, outerLimit: 800000 }, // Super Admin
-  { id: 4, name: "MAHENDRA", phone: "9800000004", role: "member", memberLimit: 200000, outerLimit: 800000 },
+  { id: 3, name: "HARISH", phone: "9800000003", role: "member", memberLimit: 200000, outerLimit: 800000 },
+  { id: 4, name: "MAHENDRA", phone: "9800000004", role: "admin", memberLimit: 200000, outerLimit: 800000 }, // Super Admin
   { id: 5, name: "MANOJ", phone: "9800000005", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 6, name: "MANSINGH", phone: "9800000006", role: "member", memberLimit: 200000, outerLimit: 800000 },
-  { id: 7, name: "NARESH", phone: "9800000007", role: "member", memberLimit: 200000, outerLimit: 800000 },
+  { id: 7, name: "NARESH", phone: "9800000007", role: "admin", memberLimit: 200000, outerLimit: 800000 }, // Super Admin
   { id: 8, name: "NEERAJ", phone: "9800000008", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 9, name: "PRAHLAD", phone: "9800000009", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 10, name: "SATISH", phone: "9800000010", role: "member", memberLimit: 200000, outerLimit: 800000 },

@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Committee App</string>
-    <string name="title_activity_main">Committee App</string>
+    <string name="app_name">Banking Society</string>
+    <string name="title_activity_main">Banking Society</string>
     <string name="package_name">com.committee.app</string>
     <string name="custom_url_scheme">com.committee.app</string>
 </resources>

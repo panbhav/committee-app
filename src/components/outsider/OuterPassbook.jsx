@@ -16,14 +16,18 @@ export default function OuterPassbook() {
     );
   }
 
+  const totalMonths = loan.totalMonths || 12;
+  const effectiveRate = loan.chargedRate ?? loan.rate ?? (totalMonths === 6 ? 8 : 16);
+  const effectiveKisht = loan.outsiderMonthlyKisht || loan.monthlyKisht;
+
   const guarantorMember = members.find(m => m.name === loan.guarantor);
-  const progressPercent = Math.round((loan.currentMonth / loan.totalMonths) * 100);
-  const totalRepayable = loan.monthlyKisht * loan.totalMonths;
-  const totalPaidSoFar = loan.monthlyKisht * loan.currentMonth;
+  const progressPercent = Math.round((loan.currentMonth / totalMonths) * 100);
+  const totalRepayable = effectiveKisht * totalMonths;
+  const totalPaidSoFar = effectiveKisht * Math.max(0, loan.currentMonth - 1);
   const remainingBalance = Math.max(0, totalRepayable - totalPaidSoFar);
 
-  const timeline = getLoanTimeline(loan.currentMonth, loan.totalMonths);
-  const schedule = getInstallmentSchedule(loan.currentMonth, loan.totalMonths);
+  const timeline = getLoanTimeline(loan.currentMonth, totalMonths);
+  const schedule = getInstallmentSchedule(loan.currentMonth, totalMonths);
 
   return (
     <div className="space-y-4 pb-20">
@@ -38,7 +42,7 @@ export default function OuterPassbook() {
               {loan.borrowerName}
             </h2>
             <p className="text-xs text-slate-400">
-              Loan Account #{loan.id} • 16% Flat
+              Loan Account #{loan.id} • {effectiveRate}% Flat
             </p>
           </div>
 
@@ -51,7 +55,7 @@ export default function OuterPassbook() {
         <div className="bg-emerald-950/30 border border-emerald-500/30 rounded-2xl p-4 text-center mt-3">
           <span className="text-xs text-emerald-300 font-medium">{t.monthlyKisht}</span>
           <div className="text-3xl font-black text-white mt-1">
-            {formatINR(loan.monthlyKisht)}
+            {formatINR(effectiveKisht)}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
             {t.dueOn10th}
@@ -116,7 +120,7 @@ export default function OuterPassbook() {
           <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
             {t.installmentReceipts}
           </span>
-          <span className="text-[11px] text-slate-400">12 Months Schedule</span>
+          <span className="text-[11px] text-slate-400">{totalMonths} Months Schedule</span>
         </div>
 
         <div className="space-y-1.5">
@@ -161,7 +165,7 @@ export default function OuterPassbook() {
 
                 <div className="text-right">
                   <span className={`font-bold ${isPaid ? 'text-emerald-400' : isCurrent ? 'text-amber-400' : 'text-slate-400'}`}>
-                    {formatINR(loan.monthlyKisht)}
+                    {formatINR(effectiveKisht)}
                   </span>
                   <span className="text-[9px] text-slate-500 block">
                     {isPaid ? `Receipt #${loan.id}-${item.kishtNum}` : isCurrent ? 'Action Pending' : 'Upcoming'}

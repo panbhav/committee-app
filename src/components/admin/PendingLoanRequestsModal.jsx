@@ -50,7 +50,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                       <span className={`text-[9px] px-1.5 py-0.2 rounded font-black uppercase ${
                         req.type === 'self' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
                       }`}>
-                        {req.type === 'self' ? 'SELF (10%)' : 'OUTER (16%)'}
+                        {req.type === 'self' ? `SELF ${req.rate || (req.totalMonths === 6 ? 5 : 10)}%` : `OUTER ${req.rate || (req.totalMonths === 6 ? 8 : 16)}%`} • {req.totalMonths || 12}m
                       </span>
                       <div className="font-bold text-sm text-white mt-1">
                         {req.borrowerName}
@@ -63,6 +63,9 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                     <div className="text-right">
                       <span className="text-sm font-black text-white">{formatINR(req.principal)}</span>
                       <span className="text-[10px] text-emerald-400 block font-semibold">{formatINR(req.monthlyKisht)}/mo</span>
+                      {req.chargedRate && req.chargedRate !== req.rate && (
+                        <span className="text-[9px] text-amber-400 block">Outsider: {req.chargedRate}%</span>
+                      )}
                     </div>
                   </div>
 
@@ -103,7 +106,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                     </div>
                   ) : (
                     <div className="text-[10px] text-slate-500 italic text-center">
-                      Pending approval by Narendra / Harish
+                      Pending approval by Super Admins (Narendra, Mahendra, Naresh)
                     </div>
                   )}
                 </div>

@@ -1,23 +1,44 @@
-﻿import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { calculateKisht, calculateSecurityFee, formatINR } from '../../utils/loanCalculator';
-import { Send, Sparkles, AlertTriangle, CheckCircle2, User } from 'lucide-react';
+import { calculateKisht, calculateSecurityFee, getStandardRate, formatINR } from '../../utils/loanCalculator';
+import { Send, Sparkles, AlertTriangle, CheckCircle2, User, Clock, Percent, Zap } from 'lucide-react';
 
 export default function MemberLoanRequestModal({ isOpen, onClose }) {
-  const { currentUser, submitLoanRequest, getMemberLimits, t } = useApp();
+  const { currentUser, isSuperAdmin, submitLoanRequest, disburseLoan, getMemberLimits, t } = useApp();
 
   const [type, setType] = useState('outer'); // 'outer' | 'self'
+  const [totalMonths, setTotalMonths] = useState(12); // 12 | 6
   const [borrowerName, setBorrowerName] = useState('');
   const [borrowerPhone, setBorrowerPhone] = useState('');
   const [borrowerAddress, setBorrowerAddress] = useState('');
   const [principal, setPrincipal] = useState('50000');
+  const [chargedRate, setChargedRate] = useState('16');
   const [note, setNote] = useState('');
+  const [instantDisburse, setInstantDisburse] = useState(false);
+
+  // Sync default charged rate with tenure
+  useEffect(() => {
+    if (type === 'outer') {
+      if (totalMonths === 6 && (chargedRate === '16' || !chargedRate)) {
+        setChargedRate('8');
+      } else if (totalMonths === 12 && (chargedRate === '8' || !chargedRate)) {
+        setChargedRate('16');
+      }
+    }
+  }, [totalMonths, type]);
 
   if (!isOpen || !currentUser) return null;
 
   const numPrincipal = Number(principal) || 0;
-  const kisht = calculateKisht(numPrincipal, type);
+  const standardRate = getStandardRate(type, totalMonths);
+  const kisht = calculateKisht(numPrincipal, type, totalMonths);
   const security = calculateSecurityFee(numPrincipal, type);
+
+  const numChargedRate = Number(chargedRate) > 0 ? Number(chargedRate) : standardRate;
+  const outsiderKisht = type === 'outer'
+    ? calculateKisht(numPrincipal, type, totalMonths, numChargedRate)
+    : kisht;
+  const monthlyMargin = Math.max(0, outsiderKisht - kisht);
 
   const limits = getMemberLimits(currentUser.name);
   const availableLimit = type === 'self' ? limits.selfLeft : limits.outerLeft;
@@ -34,20 +55,45 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
       return;
     }
 
-    submitLoanRequest({
-      type,
-      borrowerName: type === 'self' ? currentUser.name : borrowerName.toUpperCase(),
-      borrowerPhone,
-      borrowerAddress,
-      principal: numPrincipal,
-      note
-    });
+    const bName = type === 'self' ? currentUser.name : borrowerName.toUpperCase();
 
-    alert(
-      type === 'self'
-        ? `Aapka ₹${numPrincipal.toLocaleString()} ke personal loan ka aavedan President ko bhej diya gaya hai!`
-        : `Aapne ${borrowerName.toUpperCase()} ke ₹${numPrincipal.toLocaleString()} loan ki zaminari ka aavedan bhej diya hai!`
-    );
+    if (isSuperAdmin && instantDisburse) {
+      // Direct disburse by admin
+      const createdLoan = disburseLoan({
+        borrowerName: bName,
+        borrowerPhone: type === 'self' ? currentUser.phone : borrowerPhone,
+        guarantor: currentUser.name,
+        type,
+        principal: numPrincipal,
+        totalMonths,
+        chargedRate: type === 'outer' ? numChargedRate : standardRate
+      });
+
+      alert(
+        type === 'self'
+          ? `Self Loan #${createdLoan.id} for ₹${numPrincipal.toLocaleString()} (${totalMonths} Months) disbursed instantly!`
+          : `Outer Loan #${createdLoan.id} for ${bName} (${totalMonths} Months) disbursed instantly!`
+      );
+    } else {
+      // Submit as request
+      submitLoanRequest({
+        type,
+        borrowerName: bName,
+        borrowerPhone: type === 'self' ? currentUser.phone : borrowerPhone,
+        borrowerAddress,
+        principal: numPrincipal,
+        totalMonths,
+        chargedRate: type === 'outer' ? numChargedRate : standardRate,
+        note
+      });
+
+      alert(
+        type === 'self'
+          ? `Aapka ₹${numPrincipal.toLocaleString()} ke personal loan ka aavedan (${totalMonths} mahine) committee ko bhej diya gaya hai!`
+          : `Aapne ${bName} ke ₹${numPrincipal.toLocaleString()} loan ki zaminari ka aavedan (${totalMonths} mahine) bhej diya hai!`
+      );
+    }
+
     onClose();
   };
 
@@ -80,7 +126,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
                 type === 'outer' ? 'bg-amber-600 text-white shadow' : 'text-slate-400'
               }`}
             >
-              Outer Loan (16%)
+              Outer Loan ({totalMonths === 6 ? '8%' : '16%'})
             </button>
             <button
               type="button"
@@ -89,8 +135,52 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
                 type === 'self' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400'
               }`}
             >
-              Self Personal (10%)
+              Self Personal ({totalMonths === 6 ? '5%' : '10%'})
             </button>
+          </div>
+
+          {/* Tenure / Duration Option (12 Months vs 6 Months) */}
+          <div>
+            <label className="text-slate-300 font-semibold block mb-1">
+              Loan Duration (Tenure):
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setTotalMonths(12)}
+                className={`py-2 px-2 rounded-xl border text-center transition font-bold flex flex-col items-center gap-0.5 ${
+                  totalMonths === 12
+                    ? 'border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow'
+                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-xs">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>12 Months</span>
+                </div>
+                <span className="text-[10px] font-normal text-slate-400">
+                  {type === 'self' ? '10% Flat' : '16% Standard'}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setTotalMonths(6)}
+                className={`py-2 px-2 rounded-xl border text-center transition font-bold flex flex-col items-center gap-0.5 ${
+                  totalMonths === 6
+                    ? 'border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow'
+                    : 'border-slate-800 bg-slate-950 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <div className="flex items-center gap-1 text-xs">
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>6 Months (Half)</span>
+                </div>
+                <span className="text-[10px] font-normal text-emerald-400">
+                  {type === 'self' ? '5% Flat' : '8% Standard'}
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* If Outer Loan: Outsider Details */}
@@ -120,7 +210,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
                     placeholder="98xxxxxx"
                     value={borrowerPhone}
                     onChange={(e) => setBorrowerPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500 font-mono"
                   />
                 </div>
                 <div>
@@ -136,12 +226,67 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
                   />
                 </div>
               </div>
+
+              {/* Outsider Interest Rate Choice (Requirement 2) */}
+              <div className="bg-amber-950/20 border border-amber-500/30 rounded-2xl p-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-amber-300 font-bold flex items-center gap-1 text-xs">
+                    <Percent className="w-3.5 h-3.5" />
+                    <span>Outsider Interest Rate (%)</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Society Std: <b className="text-white">{standardRate}%</b>
+                  </span>
+                </div>
+
+                {/* Quick Presets */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {(totalMonths === 12 ? ['16', '18', '20', '24'] : ['8', '10', '12', '15']).map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setChargedRate(r)}
+                      className={`py-1 rounded-lg text-xs font-bold border transition ${
+                        chargedRate === r
+                          ? 'bg-amber-500 text-slate-950 border-amber-400 shadow'
+                          : 'bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      {r}% {r === String(standardRate) ? '(Std)' : ''}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom Rate Input */}
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-[11px] text-slate-400">Custom Rate:</span>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      step="0.5"
+                      min="1"
+                      max="60"
+                      value={chargedRate}
+                      onChange={(e) => setChargedRate(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg py-1 px-2.5 text-xs text-white font-bold focus:border-amber-500 focus:outline-none"
+                      placeholder="e.g. 20"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-slate-500 font-bold">%</span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-slate-400 leading-tight">
+                  ℹ️ Outsider will only see <b>{numChargedRate}%</b> on passbook. Society accounting is standard <b>{standardRate}%</b>.
+                </p>
+              </div>
             </>
           ) : (
             <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-slate-300 space-y-1">
               <span className="text-[10px] text-slate-500 block uppercase">Borrower:</span>
               <span className="font-bold text-white text-sm">{currentUser.name} (Apne liye)</span>
-              <span className="text-[11px] text-emerald-400 block">Interest: 10% Flat • 12 Kishts</span>
+              <span className="text-[11px] text-emerald-400 block">
+                Interest: {standardRate}% Flat • {totalMonths} Kishts
+              </span>
             </div>
           )}
 
@@ -150,7 +295,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
             <div className="flex justify-between items-center mb-1">
               <label className="text-slate-300 font-semibold">Loan Amount (₹):</label>
               <span className="text-[10px] text-slate-400">
-                Aapki bachi limit: <b className="text-emerald-400">{formatINR(availableLimit)}</b>
+                Bachi limit: <b className="text-emerald-400">{formatINR(availableLimit)}</b>
               </span>
             </div>
             <input
@@ -178,15 +323,32 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
           </div>
 
           {/* Auto calculations */}
-          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-1 text-slate-300">
+          <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-1.5 text-slate-300">
             <div className="flex justify-between">
-              <span>Mahina Kisht (12 Mos):</span>
+              <span>Society Kisht ({totalMonths} Mos):</span>
               <span className="font-bold text-emerald-400">{formatINR(kisht)} / mo</span>
             </div>
+
+            {type === 'outer' && numChargedRate !== standardRate && (
+              <>
+                <div className="flex justify-between text-amber-300 pt-1 border-t border-slate-800/80">
+                  <span>Outsider Kisht ({numChargedRate}%):</span>
+                  <span className="font-bold text-amber-400">{formatINR(outsiderKisht)} / mo</span>
+                </div>
+                {monthlyMargin > 0 && (
+                  <div className="flex justify-between text-[11px] text-emerald-400 font-semibold bg-emerald-950/30 p-1.5 rounded-lg border border-emerald-900/40">
+                    <span>Aapka Har Mahine Ka Munafa:</span>
+                    <span>+{formatINR(monthlyMargin)} / mo</span>
+                  </div>
+                )}
+              </>
+            )}
+
             <div className="flex justify-between">
               <span>Upfront Security Fee:</span>
               <span className="font-bold text-amber-400">{formatINR(security)}</span>
             </div>
+
             {type === 'outer' && (
               <div className="flex justify-between pt-1 border-t border-slate-800/80 text-[11px] text-indigo-400">
                 <span>Aapka Feb Commission (6%):</span>
@@ -201,6 +363,25 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
             )}
           </div>
 
+          {/* Admin Instant Disburse Option */}
+          {isSuperAdmin && (
+            <div className="bg-emerald-950/20 border border-emerald-500/40 rounded-2xl p-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-emerald-400" />
+                <div>
+                  <span className="text-xs font-bold text-white block">Instant Disburse (Super Admin)</span>
+                  <span className="text-[10px] text-emerald-300">Approve and disburse immediately</span>
+                </div>
+              </div>
+              <input
+                type="checkbox"
+                checked={instantDisburse}
+                onChange={(e) => setInstantDisburse(e.target.checked)}
+                className="w-4 h-4 accent-emerald-500 cursor-pointer"
+              />
+            </div>
+          )}
+
           <div className="pt-2 flex gap-2">
             <button
               type="button"
@@ -211,10 +392,10 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-1.5 shadow"
+              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-1.5 shadow active:scale-98 transition"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>Submit Request</span>
+              {isSuperAdmin && instantDisburse ? <Zap className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+              <span>{isSuperAdmin && instantDisburse ? 'Disburse Now' : 'Submit Request'}</span>
             </button>
           </div>
         </form>

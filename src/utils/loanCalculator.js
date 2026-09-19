@@ -1,14 +1,25 @@
-export function calculateKisht(principal, type = 'outer') {
-  const p = Number(principal) || 0;
+export function getStandardRate(type = 'outer', totalMonths = 12) {
+  const m = Number(totalMonths) || 12;
   if (type === 'self') {
-    // 10% flat interest, 12 months
-    const total = p * 1.10;
-    return Math.round(total / 12);
+    return m === 6 ? 5 : 10;
   } else {
-    // 16% flat interest, 12 months
-    const total = p * 1.16;
-    return Math.round(total / 12);
+    return m === 6 ? 8 : 16;
   }
+}
+
+export function calculateKisht(principal, type = 'outer', totalMonths = 12, customRate = null) {
+  const p = Number(principal) || 0;
+  const m = Number(totalMonths) || 12;
+
+  let rate;
+  if (customRate !== null && customRate !== undefined && !isNaN(Number(customRate)) && Number(customRate) > 0) {
+    rate = Number(customRate);
+  } else {
+    rate = getStandardRate(type, m);
+  }
+
+  const total = p * (1 + rate / 100);
+  return Math.round(total / m);
 }
 
 export function calculateSecurityFee(principal, type = 'outer') {

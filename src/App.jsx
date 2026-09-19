@@ -13,7 +13,7 @@ import FundManagerModal from './components/admin/FundManagerModal';
 import LoginScreen from './components/common/LoginScreen';
 import ActivityLogsModal from './components/common/ActivityLogsModal';
 import { formatINR, getLoanTimeline } from './utils/loanCalculator';
-import { Users, FileText, Plus, Search, Bell, Calendar } from 'lucide-react';
+import { Users, FileText, Plus, Search, Bell, Calendar, Building2, User, Send } from 'lucide-react';
 
 export default function App() {
   const { currentUser, isSuperAdmin, loans, members, getMemberLimits, loanRequests, currentOuterLoanId, t } = useApp();
@@ -22,6 +22,7 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'loans' | 'limits' | 'annual'
+  const [adminHomeView, setAdminHomeView] = useState('meeting'); // 'meeting' | 'member'
   const [isDisburseOpen, setIsDisburseOpen] = useState(false);
   const [isMemberRequestOpen, setIsMemberRequestOpen] = useState(false);
   const [isPendingRequestsOpen, setIsPendingRequestsOpen] = useState(false);
@@ -57,15 +58,12 @@ export default function App() {
   }
 
 
-  // Filter Loans by loan ID, borrower name, or guarantor
-  const filteredLoans = loans.filter(l => {
-    const q = loanSearch.toLowerCase();
-    return (
-      l.id.toString().includes(q) ||
-      l.borrowerName.toLowerCase().includes(q) ||
-      l.guarantor.toLowerCase().includes(q)
-    );
-  });
+  // Filter Loans by borrower or guarantor
+  const filteredLoans = loans.filter(l =>
+    l.borrowerName.toLowerCase().includes(loanSearch.toLowerCase()) ||
+    l.guarantor.toLowerCase().includes(loanSearch.toLowerCase()) ||
+    String(l.id).includes(loanSearch)
+  );
 
   // Filter Members by name
   const filteredMembers = members.filter(m =>
@@ -79,40 +77,70 @@ export default function App() {
       <main className="flex-1 p-4 overflow-y-auto">
         {/* TAB 1: HOME / MEETING */}
         {activeTab === 'home' && (
-          isSuperAdmin ? (
-            <>
-              {/* Notification Banner if members have pending loan requests */}
-              {loanRequests.filter(r => r.status === 'pending').length > 0 && (
-                <div
-                  onClick={() => setIsPendingRequestsOpen(true)}
-                  className="mb-3 bg-gradient-to-r from-amber-950/80 to-slate-900 border border-amber-500/40 p-3 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-400 transition"
+          <>
+            {/* If Super Admin, show View Switcher between Meeting Admin and My Member Dashboard */}
+            {isSuperAdmin && (
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-2xl mb-3 shadow-lg">
+                <button
+                  onClick={() => setAdminHomeView('meeting')}
+                  className={`py-2 px-1 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                    adminHomeView === 'meeting'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-xs animate-bounce">
-                      {loanRequests.filter(r => r.status === 'pending').length}
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>{t.tabMeeting} (Admin)</span>
+                </button>
+                <button
+                  onClick={() => setAdminHomeView('member')}
+                  className={`py-2 px-1 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition ${
+                    adminHomeView === 'member'
+                      ? 'bg-indigo-600 text-white shadow-md'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>My Loans ({currentUser?.name})</span>
+                </button>
+              </div>
+            )}
+
+            {isSuperAdmin && adminHomeView === 'meeting' ? (
+              <>
+                {/* Notification Banner if members have pending loan requests */}
+                {loanRequests.filter(r => r.status === 'pending').length > 0 && (
+                  <div
+                    onClick={() => setIsPendingRequestsOpen(true)}
+                    className="mb-3 bg-gradient-to-r from-amber-950/80 to-slate-900 border border-amber-500/40 p-3 rounded-2xl flex items-center justify-between cursor-pointer hover:border-amber-400 transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold text-xs animate-bounce">
+                        {loanRequests.filter(r => r.status === 'pending').length}
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-white block">New Member Loan Requests</span>
+                        <span className="text-[10px] text-amber-300">Tap to review & approve</span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-xs font-bold text-white block">New Member Loan Requests</span>
-                      <span className="text-[10px] text-amber-300">Tap to review & approve</span>
-                    </div>
+                    <span className="text-[11px] font-bold text-amber-400 bg-amber-950 px-2 py-1 rounded-lg border border-amber-800">
+                      Review →
+                    </span>
                   </div>
-                  <span className="text-[11px] font-bold text-amber-400 bg-amber-950 px-2 py-1 rounded-lg border border-amber-800">
-                    Review →
-                  </span>
-                </div>
-              )}
-              <MeetingCollection
-                onOpenNewLoan={() => setIsDisburseOpen(true)}
-                onOpenFundManager={() => setIsFundManagerOpen(true)}
+                )}
+                <MeetingCollection
+                  onOpenNewLoan={() => setIsDisburseOpen(true)}
+                  onOpenFundManager={() => setIsFundManagerOpen(true)}
+                />
+              </>
+            ) : (
+              <MemberDashboard
+                onOpenNewLoan={() => setIsMemberRequestOpen(true)}
+                onOpenLogs={() => setIsLogsOpen(true)}
+                onOpenBahikhata={() => setShowBahikhataModal(true)}
               />
-            </>
-          ) : (
-            <MemberDashboard
-              onOpenNewLoan={() => setIsMemberRequestOpen(true)}
-              onOpenLogs={() => setIsLogsOpen(true)}
-              onOpenBahikhata={() => setShowBahikhataModal(true)}
-            />
-          )
+            )}
+          </>
         )}
 
 
@@ -124,17 +152,26 @@ export default function App() {
             <div className="flex justify-between items-center px-1">
               <div>
                 <h2 className="text-lg font-bold text-white">{t.activeLoansRegister}</h2>
-                <p className="text-xs text-slate-400">Total {loans.length} active loans (12 Kishts)</p>
+                <p className="text-xs text-slate-400">Total {loans.length} active loans</p>
               </div>
-              {isSuperAdmin && (
+              <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => setIsDisburseOpen(true)}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow"
+                  onClick={() => setIsMemberRequestOpen(true)}
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow transition"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>{t.newLoan}</span>
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Request</span>
                 </button>
-              )}
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => setIsDisburseOpen(true)}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow transition"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{t.newLoan}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Quick Loan Search */}
@@ -164,7 +201,7 @@ export default function App() {
                 </div>
               ) : (
                 filteredLoans.map(l => {
-                  const timeline = getLoanTimeline(l.currentMonth, l.totalMonths);
+                  const timeline = getLoanTimeline(l.currentMonth, l.totalMonths || 12);
                   return (
                     <div
                       key={l.id}
@@ -176,11 +213,11 @@ export default function App() {
                           <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
                             l.type === 'self' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
                           }`}>
-                            {l.type === 'self' ? 'SELF 10%' : 'OUTER 16%'}
+                            {l.type === 'self' ? `SELF ${l.rate}%` : `OUTER ${l.rate}%`} • {l.totalMonths || 12}m
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-400 mt-0.5">
-                          {t.guarantor}: <b className="text-slate-200">{l.guarantor}</b> • {t.month}: <b className="text-emerald-400">{l.currentMonth}/12</b>
+                          {t.guarantor}: <b className="text-slate-200">{l.guarantor}</b> • {t.month}: <b className="text-emerald-400">{l.currentMonth}/{l.totalMonths || 12}</b>
                         </div>
                         <div className="flex items-center gap-1.5 text-[10px] text-indigo-300 mt-1 font-medium bg-slate-950/70 px-2 py-0.5 rounded-lg border border-slate-800/80 w-fit">
                           <Calendar className="w-2.5 h-2.5 text-indigo-400" />

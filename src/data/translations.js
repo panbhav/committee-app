@@ -1,7 +1,7 @@
 export const translations = {
   en: {
     // Header & Common
-    appTitle: "Committee Portal",
+    appTitle: "Banking Society",
     adminBadge: "Super Admin",
     memberPortal: "Partner Member Portal",
     readOnly: "Read Only",
@@ -10,8 +10,8 @@ export const translations = {
     outsiderView: "Outsider View",
     switchLogin: "Switch Active Login",
     testPerspective: "Test the app from different perspectives",
-    twoAdmins: "2 Super Admins (Full Edit Access)",
-    committeeMembers: "Committee Members (Read-Only Portal)",
+    twoAdmins: "3 Super Admins (Full Edit Access)",
+    committeeMembers: "15 Society Members (Partner Portal)",
     outerBorrowers: "Outer Borrowers (Passbook Only)",
     close: "Close",
     resetData: "Reset Data",
@@ -147,14 +147,14 @@ export const translations = {
     revertAction: "Revert",
 
     // Login Screen
-    loginHeaderTitle: "Committee Portal Login",
+    loginHeaderTitle: "Banking Society Login",
     loginHeaderSubtitle: "Enter your registered Mobile Number or Loan ID",
     inputPhoneLabel: "Mobile Number / Member Name / Loan ID:",
     securityPinLabel: "Security PIN (Optional for Demo):",
     defaultPinHint: "Default: 1234",
     loginSubmitBtn: "Login to Portal",
     quickDemoLabel: "1-Tap Quick Demo Login:",
-    privateNetworkNote: "🔒 Committee Private Network • Role detected automatically",
+    privateNetworkNote: "🔒 Banking Society Private Network • Role detected automatically",
     english: "English",
     hindi: "Hindi",
     enterOtpTitle: "Verify Mobile OTP",
@@ -181,7 +181,7 @@ export const translations = {
   },
   hi: {
     // Header & Common
-    appTitle: "कमिटी पोर्टल",
+    appTitle: "बैंकिंग सोसाइटी",
     adminBadge: "सुपर एडमिन",
     memberPortal: "सदस्य पोर्टल",
     readOnly: "केवल देखने हेतु",
@@ -190,8 +190,8 @@ export const translations = {
     outsiderView: "बाहरी सदस्य पासबुक",
     switchLogin: "लॉगिन बदलें",
     testPerspective: "अलग-अलग सदस्यों के नज़रिए से देखें",
-    twoAdmins: "2 सुपर एडमिन (पूरे अधिकार)",
-    committeeMembers: "15 कमिटी सदस्य (पारदर्शी खाता)",
+    twoAdmins: "3 सुपर एडमिन (पूरे अधिकार)",
+    committeeMembers: "15 सोसाइटी सदस्य (पारदर्शी खाता)",
     outerBorrowers: "बाहरी क़र्ज़दार (केवल पासबुक)",
     close: "बंद करें",
     resetData: "डेटा रीसेट करें",
@@ -327,14 +327,14 @@ export const translations = {
     revertAction: "पूर्ववत करें (Undo)",
 
     // Login Screen
-    loginHeaderTitle: "कमिटी पोर्टल लॉगिन",
+    loginHeaderTitle: "बैंकिंग सोसाइटी लॉगिन",
     loginHeaderSubtitle: "अपना पंजीकृत मोबाइल नंबर या लोन आईडी दर्ज करें",
     inputPhoneLabel: "मोबाइल नंबर / सदस्य का नाम / लोन आईडी:",
     securityPinLabel: "सुरक्षा पिन (डेमो हेतु ऐच्छिक):",
     defaultPinHint: "डिफ़ॉल्ट: 1234",
     loginSubmitBtn: "पोर्टल में प्रवेश करें",
     quickDemoLabel: "1-क्लिक त्वरित डेमो लॉगिन:",
-    privateNetworkNote: "🔒 कमिटी निजी नेटवर्क • रोल स्वतः पहचाना जाएगा",
+    privateNetworkNote: "🔒 बैंकिंग सोसाइटी निजी नेटवर्क • रोल स्वतः पहचाना जाएगा",
     english: "English",
     hindi: "हिंदी",
     enterOtpTitle: "मोबाइल ओटीपी सत्यापन",

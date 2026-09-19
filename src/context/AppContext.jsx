@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { INITIAL_MEMBERS, INITIAL_LOANS } from '../data/initialData';
 import { translations } from '../data/translations';
-import { calculateKisht, calculateSecurityFee } from '../utils/loanCalculator';
+import { calculateKisht, calculateSecurityFee, getStandardRate } from '../utils/loanCalculator';
 import { db, doc, setDoc, onSnapshot } from '../services/firebase';
 
 const AppContext = createContext();
@@ -35,7 +35,7 @@ export function AppProvider({ children }) {
       const parsed = JSON.parse(saved);
       return parsed.map(m => {
         const initial = INITIAL_MEMBERS.find(im => im.id === m.id);
-        return initial ? { ...m, phone: initial.phone } : m;
+        return initial ? { ...m, phone: initial.phone, role: initial.role } : m;
       });
     }
     return INITIAL_MEMBERS;
@@ -192,7 +192,14 @@ export function AppProvider({ children }) {
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const d = docSnap.data();
-        if (d.members && Array.isArray(d.members)) setMembers(d.members);
+        if (d.members && Array.isArray(d.members)) {
+          const syncedMembers = d.members.map(m => {
+            if (['NARENDRA', 'MAHENDRA', 'NARESH'].includes(m.name)) return { ...m, role: 'admin' };
+            if (m.name === 'HARISH') return { ...m, role: 'member' };
+            return m;
+          });
+          setMembers(syncedMembers);
+        }
         if (d.loans && Array.isArray(d.loans)) setLoans(d.loans);
         if (d.payments && typeof d.payments === 'object') setPayments(d.payments);
         if (d.auditLogs && Array.isArray(d.auditLogs)) setAuditLogs(d.auditLogs);
@@ -443,9 +450,14 @@ export function AppProvider({ children }) {
   };
 
   // Submit a loan request by any member
-  const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, principal, note }) => {
-    const kisht = calculateKisht(principal, type);
+  const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, principal, note, totalMonths = 12, chargedRate = null }) => {
+    const m = Number(totalMonths) || 12;
+    const standardRate = getStandardRate(type, m);
+    const kisht = calculateKisht(principal, type, m);
     const security = calculateSecurityFee(principal, type);
+    const effectiveChargedRate = (type === 'outer' && chargedRate && Number(chargedRate) > 0) ? Number(chargedRate) : standardRate;
+    const outsiderKisht = (type === 'outer') ? calculateKisht(principal, type, m, effectiveChargedRate) : kisht;
+
     const newRequest = {
       id: 'req-' + Date.now(),
       requestedBy: currentUser.name,
@@ -454,19 +466,25 @@ export function AppProvider({ children }) {
       borrowerPhone,
       borrowerAddress,
       principal,
+      totalMonths: m,
+      rate: standardRate,
+      chargedRate: effectiveChargedRate,
       monthlyKisht: kisht,
+      outsiderMonthlyKisht: outsiderKisht,
       securityFee: security,
       note,
       status: 'pending',
       timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', hour12: true })
     };
 
-    setLoanRequests(prev => [newRequest, ...prev]);
+    const updatedRequests = [newRequest, ...loanRequests];
+    setLoanRequests(updatedRequests);
     addLog(
       'LOAN_REQUESTED',
-      `${currentUser.name} requested new ${type.toUpperCase()} loan for ${borrowerName} (₹${principal.toLocaleString()}).`,
+      `${currentUser.name} requested new ${type.toUpperCase()} loan for ${borrowerName} (₹${principal.toLocaleString()}, ${m} Months).`,
       false
     );
+    syncToCloud({ loanRequests: updatedRequests });
   };
 
   // Approve loan request by Super Admin
@@ -480,11 +498,15 @@ export function AppProvider({ children }) {
       borrowerPhone: req.borrowerPhone,
       guarantor: req.requestedBy,
       type: req.type,
-      principal: req.principal
+      principal: req.principal,
+      totalMonths: req.totalMonths || 12,
+      chargedRate: req.chargedRate || null
     });
 
-    setLoanRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'approved' } : r));
+    const updatedRequests = loanRequests.map(r => r.id === requestId ? { ...r, status: 'approved' } : r);
+    setLoanRequests(updatedRequests);
     addLog('REQUEST_APPROVED', `Admin approved loan request for ${req.borrowerName} (₹${req.principal.toLocaleString()}).`, false);
+    syncToCloud({ loanRequests: updatedRequests });
   };
 
   // Reject loan request by Super Admin
@@ -492,17 +514,27 @@ export function AppProvider({ children }) {
     const req = loanRequests.find(r => r.id === requestId);
     if (!req) return;
 
-    setLoanRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r));
+    const updatedRequests = loanRequests.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r);
+    setLoanRequests(updatedRequests);
     addLog('REQUEST_REJECTED', `Admin rejected loan request for ${req.borrowerName}.`, false);
+    syncToCloud({ loanRequests: updatedRequests });
   };
 
   // Disburse a brand new loan with Audit Trail
-  const disburseLoan = ({ borrowerName, borrowerPhone, guarantor, type, principal }) => {
-
+  const disburseLoan = ({ borrowerName, borrowerPhone, guarantor, type, principal, totalMonths = 12, chargedRate = null }) => {
     const p = Number(principal);
-    const kisht = calculateKisht(p, type);
+    const m = Number(totalMonths) || 12;
+    const standardRate = getStandardRate(type, m);
+    const kisht = calculateKisht(p, type, m);
     const security = calculateSecurityFee(p, type);
     const nextId = Math.max(...loans.map(l => l.id), 460) + 1;
+
+    const effectiveChargedRate = (type === 'outer' && chargedRate !== null && chargedRate !== undefined && Number(chargedRate) > 0)
+      ? Number(chargedRate)
+      : standardRate;
+    const outsiderKisht = (type === 'outer')
+      ? calculateKisht(p, type, m, effectiveChargedRate)
+      : kisht;
 
     const newLoan = {
       id: nextId,
@@ -511,10 +543,12 @@ export function AppProvider({ children }) {
       guarantor: type === 'self' ? borrowerName.toUpperCase() : guarantor.toUpperCase(),
       type,
       principal: p,
-      rate: type === 'self' ? 10 : 16,
+      rate: standardRate,
+      chargedRate: effectiveChargedRate,
       monthlyKisht: kisht,
+      outsiderMonthlyKisht: outsiderKisht,
       currentMonth: 1,
-      totalMonths: 12,
+      totalMonths: m,
       securityFee: security
     };
 
@@ -526,7 +560,7 @@ export function AppProvider({ children }) {
       timestamp: getFormattedTimestamp(),
       actor: currentUser ? currentUser.name : 'ADMIN',
       action: 'LOAN_DISBURSED',
-      details: `Disbursed new ${type.toUpperCase()} loan #${nextId} to ${newLoan.borrowerName} for ₹${p.toLocaleString()} (Guarantor: ${newLoan.guarantor}, Kisht: ₹${kisht.toLocaleString()}/mo).`,
+      details: `Disbursed new ${type.toUpperCase()} loan #${nextId} to ${newLoan.borrowerName} for ₹${p.toLocaleString()} (${m} Months, Guarantor: ${newLoan.guarantor}, Standard Kisht: ₹${kisht.toLocaleString()}/mo).`,
       canRollback: true,
       rollbackData: { type: 'new_loan', loanId: nextId }
     };
@@ -572,7 +606,7 @@ export function AppProvider({ children }) {
     });
   };
 
-  const isSuperAdmin = currentUser && (currentUser.name === 'NARENDRA' || currentUser.name === 'HARISH');
+  const isSuperAdmin = currentUser && ['NARENDRA', 'MAHENDRA', 'NARESH'].includes(currentUser.name);
 
   return (
     <AppContext.Provider value={{

@@ -301,48 +301,68 @@ export default function LoginScreen({ onLoginSuccess }) {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            {/* Narendra Testing Button */}
+            {/* Narendra Admin Button */}
             <button
               onClick={() => {
                 setMobileNumber('8219352124');
                 handleFastLogin('NARENDRA', 'admin');
               }}
-              className="p-2.5 rounded-xl border border-amber-500/40 bg-amber-950/20 hover:bg-amber-900/30 text-amber-300 text-left transition active:scale-98"
+              className="p-2 rounded-xl border border-amber-500/40 bg-amber-950/20 hover:bg-amber-900/30 text-amber-300 text-left transition active:scale-98"
             >
               <Shield className="w-3.5 h-3.5 mb-1 text-amber-400" />
               <div className="font-bold text-xs">NARENDRA (Admin)</div>
               <span className="text-[10px] text-slate-400 font-mono block">8219352124</span>
             </button>
 
-            {/* Avnish Testing Button */}
+            {/* Mahendra Admin Button */}
+            <button
+              onClick={() => {
+                setMobileNumber('9800000004');
+                handleFastLogin('MAHENDRA', 'admin');
+              }}
+              className="p-2 rounded-xl border border-amber-500/40 bg-amber-950/20 hover:bg-amber-900/30 text-amber-300 text-left transition active:scale-98"
+            >
+              <Shield className="w-3.5 h-3.5 mb-1 text-amber-400" />
+              <div className="font-bold text-xs">MAHENDRA (Admin)</div>
+              <span className="text-[10px] text-slate-400 font-mono block">9800000004</span>
+            </button>
+
+            {/* Naresh Admin Button */}
+            <button
+              onClick={() => {
+                setMobileNumber('9800000007');
+                handleFastLogin('NARESH', 'admin');
+              }}
+              className="p-2 rounded-xl border border-amber-500/40 bg-amber-950/20 hover:bg-amber-900/30 text-amber-300 text-left transition active:scale-98"
+            >
+              <Shield className="w-3.5 h-3.5 mb-1 text-amber-400" />
+              <div className="font-bold text-xs">NARESH (Admin)</div>
+              <span className="text-[10px] text-slate-400 font-mono block">9800000007</span>
+            </button>
+
+            {/* Avnish Member Button */}
             <button
               onClick={() => {
                 setMobileNumber('6378021059');
                 handleFastLogin('AVNISH', 'member');
               }}
-              className="p-2.5 rounded-xl border border-indigo-500/40 bg-indigo-950/20 hover:bg-indigo-900/30 text-indigo-300 text-left transition active:scale-98"
+              className="p-2 rounded-xl border border-indigo-500/40 bg-indigo-950/20 hover:bg-indigo-900/30 text-indigo-300 text-left transition active:scale-98"
             >
               <UserCheck className="w-3.5 h-3.5 mb-1 text-indigo-400" />
               <div className="font-bold text-xs">AVNISH (Member)</div>
               <span className="text-[10px] text-slate-400 font-mono block">6378021059</span>
             </button>
 
-            {/* Harish Testing Button */}
-            <button
-              onClick={() => handleFastLogin('HARISH', 'admin')}
-              className="p-2 rounded-xl border border-slate-700 bg-slate-800/40 hover:bg-slate-800 text-slate-300 text-left transition active:scale-98"
-            >
-              <div className="font-bold text-[11px]">HARISH (Admin)</div>
-              <span className="text-[9px] text-slate-400 block">9800000003</span>
-            </button>
-
             {/* Outer Borrower Testing Button */}
             <button
               onClick={() => handleFastLogin(408, 'outer')}
-              className="p-2 rounded-xl border border-sky-800/50 bg-sky-950/20 hover:bg-sky-900/30 text-sky-300 text-left transition active:scale-98"
+              className="col-span-2 p-2 rounded-xl border border-sky-800/50 bg-sky-950/20 hover:bg-sky-900/30 text-sky-300 text-left transition active:scale-98 flex items-center justify-between"
             >
-              <div className="font-bold text-[11px]">SANJU SAINI</div>
-              <span className="text-[9px] text-slate-400 block">Passbook #408</span>
+              <div>
+                <div className="font-bold text-[11px]">SANJU SAINI (Outsider Borrower)</div>
+                <span className="text-[9px] text-slate-400 block">Digital Passbook #408</span>
+              </div>
+              <span className="text-xs text-sky-400 font-bold">View Passbook →</span>
             </button>
           </div>
         </div>

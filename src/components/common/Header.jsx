@@ -144,24 +144,24 @@ export default function Header() {
             <div>
               <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1">
                 <Shield className="w-3 h-3" />
-                2 Super Admins (Full Edit Access)
+                3 Super Admins (Full Edit Access)
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                {members.filter(m => m.name === 'NARENDRA' || m.name === 'HARISH').map(m => (
+              <div className="grid grid-cols-3 gap-1.5">
+                {members.filter(m => ['NARENDRA', 'MAHENDRA', 'NARESH'].includes(m.name)).map(m => (
                   <button
                     key={m.id}
                     onClick={() => {
                       setCurrentUser(m);
                       setShowSwitchModal(false);
                     }}
-                    className={`p-2.5 rounded-xl border text-left transition text-xs font-bold ${
+                    className={`p-2 rounded-xl border text-left transition text-xs font-bold ${
                       currentUser?.id === m.id
                         ? 'border-amber-500 bg-amber-500/10 text-amber-300'
                         : 'border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-800'
                     }`}
                   >
                     👑 {m.name}
-                    <span className="block text-[10px] font-normal text-slate-400">Super Admin</span>
+                    <span className="block text-[9px] font-normal text-slate-400">Super Admin</span>
                   </button>
                 ))}
               </div>
@@ -171,7 +171,7 @@ export default function Header() {
             <div>
               <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1">
                 <UserCheck className="w-3 h-3" />
-                Committee Members (Read-Only Portal)
+                15 Society Members (Partner Portal)
               </div>
               <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-1 bg-slate-950 rounded-xl border border-slate-800">
                 {members.map(m => (
