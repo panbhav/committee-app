@@ -30,11 +30,12 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
   const selfPercent = Math.min(100, Math.round((limits.selfUsed / limits.memberLimit) * 100));
   const outerPercent = Math.min(100, Math.round((limits.outerUsed / limits.outerLimit) * 100));
 
-  const sendWhatsAppReminder = (borrowerName, amount, month) => {
+  const sendWhatsAppReminder = (borrowerName, amount, month, phone) => {
     const text = encodeURIComponent(
       `Namaste ${borrowerName} ji! Ye September committee ki kisht (${formatINR(amount)}, Mahina ${month}/12) jama karne ka reminder hai. Kripya meeting se pehle jama kar dein. Dhanyawad - ${currentUser.name}`
     );
-    window.open(`https://wa.me/?text=${text}`, '_blank');
+    const phoneNum = phone ? '91' + phone.replace(/\D/g, '') : '';
+    window.open(`https://wa.me/${phoneNum}?text=${text}`, '_blank');
   };
 
   return (
@@ -204,7 +205,7 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                         {formatINR(l.monthlyKisht)}
                       </span>
                       <button
-                        onClick={() => sendWhatsAppReminder(l.borrowerName, l.monthlyKisht, l.currentMonth)}
+                        onClick={() => sendWhatsAppReminder(l.borrowerName, l.monthlyKisht, l.currentMonth, l.borrowerPhone)}
                         className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded-lg active:scale-95"
                       >
                         <MessageSquare className="w-3 h-3" />

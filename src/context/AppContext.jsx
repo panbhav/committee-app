@@ -13,6 +13,11 @@ export function AppProvider({ children }) {
 
   const t = translations[lang] || translations.en;
 
+  const setLanguage = (newLang) => {
+    setLang(newLang);
+    localStorage.setItem('comm_lang', newLang);
+  };
+
   const toggleLanguage = () => {
     setLang(prev => {
       const next = prev === 'hi' ? 'en' : 'hi';
@@ -479,6 +484,9 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       lang,
+      language: lang,
+      setLang,
+      setLanguage,
       t,
       toggleLanguage,
       members,

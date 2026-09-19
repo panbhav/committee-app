@@ -30,6 +30,11 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
   const [searchQuery, setSearchQuery] = useState('');
 
   const stats = getMeetingStats();
+  const selfLoans = loans.filter(l => l.type === 'self');
+  const outerLoans = loans.filter(l => l.type === 'outer');
+  const selfTotalKisht = selfLoans.reduce((s, l) => s + l.monthlyKisht, 0);
+  const outerTotalKisht = outerLoans.reduce((s, l) => s + l.monthlyKisht, 0);
+  const totalUnits = members.length * 1000;
 
   const handleSavePartial = () => {
     if (!activeModalMember) return;
@@ -105,6 +110,22 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
             )}
           </div>
 
+        </div>
+
+        {/* Expected Collection Breakdown Pills */}
+        <div className="grid grid-cols-3 gap-1.5 mt-3 bg-slate-950/70 p-2 rounded-2xl border border-slate-800/80 text-[11px]">
+          <div className="text-center">
+            <span className="text-[9px] text-amber-400 font-bold uppercase block">Outer ({outerLoans.length})</span>
+            <span className="font-extrabold text-white text-xs">{formatINR(outerTotalKisht)}</span>
+          </div>
+          <div className="text-center border-x border-slate-800/80 px-1">
+            <span className="text-[9px] text-emerald-400 font-bold uppercase block">Self ({selfLoans.length})</span>
+            <span className="font-extrabold text-white text-xs">{formatINR(selfTotalKisht)}</span>
+          </div>
+          <div className="text-center">
+            <span className="text-[9px] text-indigo-400 font-bold uppercase block">Unit ({members.length})</span>
+            <span className="font-extrabold text-white text-xs">{formatINR(totalUnits)}</span>
+          </div>
         </div>
 
         {/* Mini Stats Bar */}

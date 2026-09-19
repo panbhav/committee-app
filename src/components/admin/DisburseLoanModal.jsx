@@ -49,7 +49,8 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
     });
 
     if (type === 'outer') {
-      const shareMsg = `Namaste ${borrowerName} ji! Aapka ₹${numPrincipal.toLocaleString()} ka committee loan pass ho gaya hai (Loan Account #${createdLoan.id}). Aapki monthly kisht ₹${kisht.toLocaleString()} hai (har mahine ki 10 tareekh tak deya). Apni digital passbook dekhne ke liye is link par apna phone number ya Loan #${createdLoan.id} daalein: ${window.location.origin}`;
+      const appUrl = window.location.href.split('?')[0].split('#')[0];
+      const shareMsg = `Namaste ${borrowerName} ji! Aapka ₹${numPrincipal.toLocaleString()} ka committee loan pass ho gaya hai (Loan Account #${createdLoan.id}). Aapki monthly kisht ₹${kisht.toLocaleString()} hai (har mahine ki 10 tareekh tak deya). Apni digital passbook dekhne ke liye is link par apna phone number ya Loan #${createdLoan.id} daalein: ${appUrl}`;
       if (confirm(`Loan #${createdLoan.id} Disbursed Successfully!\n\nWould you like to send the Digital Passbook link to ${borrowerName} on WhatsApp?`)) {
         window.open(`https://wa.me/${borrowerPhone ? '91' + borrowerPhone.replace(/\D/g, '') : ''}?text=${encodeURIComponent(shareMsg)}`, '_blank');
       }
