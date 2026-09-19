@@ -4,6 +4,29 @@ import { translations } from '../data/translations';
 import { calculateKisht, calculateSecurityFee, getStandardRate } from '../utils/loanCalculator';
 import { db, doc, setDoc, onSnapshot } from '../services/firebase';
 
+// Filter out non-financial, navigational, or irrelevant system noise from audit logs
+export const isRelevantAuditLog = (log) => {
+  if (!log || typeof log !== 'object' || !log.action) return false;
+  const noisyActions = [
+    'MONTH_CHANGED',
+    'MEETING_OPENED',
+    'MEETING_CONCLUDED',
+    'FUND_HEALTH_CHECK'
+  ];
+  if (noisyActions.includes(log.action)) return false;
+
+  const details = (log.details || '').toLowerCase();
+  if (
+    details.includes('switched meeting month') ||
+    details.includes('meeting in session') ||
+    details.includes('meeting completed') ||
+    details.includes('liquidity check')
+  ) {
+    return false;
+  }
+  return true;
+};
+
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
@@ -143,32 +166,15 @@ export function AppProvider({ children }) {
   // Full Activity / Audit Log: [{ id, timestamp, actor, action, details, previousState, targetMemberId }]
   const [auditLogs, setAuditLogs] = useState(() => {
     const saved = localStorage.getItem('comm_audit_logs');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(isRelevantAuditLog);
+        }
+      } catch (e) {}
+    }
     return [
-      {
-        id: 'log-sep-3',
-        timestamp: '10 Sep 2026, 07:30 PM',
-        actor: 'NARENDRA (Admin)',
-        action: 'MEETING_OPENED',
-        details: 'September 2026 Monthly General Meeting in session at Narendra residence.',
-        canRollback: false
-      },
-      {
-        id: 'log-sep-2',
-        timestamp: '10 Sep 2026, 06:45 PM',
-        actor: 'HARISH (Admin)',
-        action: 'FUND_HEALTH_CHECK',
-        details: 'Liquidity check verified: ₹1,50,000 opening reserve + ₹5,84,902 expected collections.',
-        canRollback: false
-      },
-      {
-        id: 'log-aug-1',
-        timestamp: '10 Aug 2026, 08:30 PM',
-        actor: 'NARENDRA (Admin)',
-        action: 'MEETING_CONCLUDED',
-        details: 'August 2026 meeting completed with 100% attendance and ₹5,84,902 recovery.',
-        canRollback: false
-      },
       {
         id: 'log-aug-2',
         timestamp: '10 Aug 2026, 07:15 PM',
@@ -276,7 +282,13 @@ export function AppProvider({ children }) {
         } else if (d.payments && typeof d.payments === 'object') {
           setPayments(d.payments);
         }
-        if (d.auditLogs && Array.isArray(d.auditLogs)) setAuditLogs(d.auditLogs);
+        if (d.auditLogs && Array.isArray(d.auditLogs)) {
+          const cleanLogs = d.auditLogs.filter(isRelevantAuditLog);
+          setAuditLogs(cleanLogs);
+          if (cleanLogs.length !== d.auditLogs.length) {
+            setDoc(docRef, { auditLogs: cleanLogs }, { merge: true }).catch(() => {});
+          }
+        }
         if (d.loanRequests && Array.isArray(d.loanRequests)) setLoanRequests(d.loanRequests);
         if (d.monthlyUnit !== undefined) setMonthlyUnit(d.monthlyUnit);
         if (d.availableCashFund !== undefined) setAvailableCashFund(d.availableCashFund);
@@ -292,7 +304,7 @@ export function AppProvider({ children }) {
           loans: INITIAL_LOANS,
           payments,
           paymentsByMonth,
-          auditLogs,
+          auditLogs: auditLogs.filter(isRelevantAuditLog),
           loanRequests,
           monthlyUnit,
           availableCashFund,
@@ -321,7 +333,9 @@ export function AppProvider({ children }) {
       canRollback,
       rollbackData
     };
-    setAuditLogs(prev => [newEntry, ...prev]);
+    if (isRelevantAuditLog(newEntry)) {
+      setAuditLogs(prev => [newEntry, ...prev.filter(isRelevantAuditLog)]);
+    }
   };
 
   // Compute bill per member for the current month
@@ -438,23 +452,12 @@ export function AppProvider({ children }) {
     };
     setPaymentsByMonth(updatedByMonth);
 
-    const logEntry = {
-      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
-      timestamp: getFormattedTimestamp(),
-      actor: currentUser ? currentUser.name : 'ADMIN',
-      action: 'MONTH_CHANGED',
-      details: `Switched meeting month to ${newMonth} (${newDate}).`,
-      canRollback: false
-    };
-    const updatedLogs = [logEntry, ...auditLogs];
-    setAuditLogs(updatedLogs);
-
+    // Note: Month browsing/navigation is a UI state and is NOT logged in financial audit logs.
     syncToCloud({
       meetingMonth: newMonth,
       meetingDate: newDate,
       payments: monthPayments,
-      paymentsByMonth: updatedByMonth,
-      auditLogs: updatedLogs
+      paymentsByMonth: updatedByMonth
     });
   };
 

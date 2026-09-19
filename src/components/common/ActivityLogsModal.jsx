@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isRelevantAuditLog } from '../../context/AppContext';
 import { History, Undo2, UserCheck, Shield, Clock, AlertCircle } from 'lucide-react';
 
 export default function ActivityLogsModal({ isOpen, onClose }) {
@@ -8,9 +8,19 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  const filteredLogs = auditLogs.filter(log => {
+  // Filter out any system noise (month navigation, meeting opened/closed, etc.)
+  const relevantLogs = auditLogs.filter(isRelevantAuditLog);
+
+  const filteredLogs = relevantLogs.filter(log => {
     if (filter === 'payments') return log.action.includes('PAID') || log.action.includes('PARTIAL');
-    if (filter === 'loans') return log.action.includes('LOAN');
+    if (filter === 'loans') {
+      return (
+        log.action.includes('LOAN') ||
+        log.action.includes('KISHT') ||
+        log.action.includes('REQUEST') ||
+        log.action.includes('DOCUMENT')
+      );
+    }
     return true;
   });
 
@@ -42,7 +52,7 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
             onClick={() => setFilter('all')}
             className={`flex-1 py-1 rounded-lg font-bold transition ${filter === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-400'}`}
           >
-            {t.allLogs} ({auditLogs.length})
+            {t.allLogs} ({relevantLogs.length})
           </button>
           <button
             onClick={() => setFilter('payments')}
@@ -68,7 +78,14 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
             filteredLogs.map(log => {
               const isRollback = log.action === 'ROLLBACK';
               const isPayment = log.action.includes('PAID') || log.action.includes('PARTIAL');
-              const isLoan = log.action.includes('LOAN');
+              const isKisht = log.action.includes('KISHT');
+              const isLoan = log.action.includes('LOAN') || log.action.includes('REQUEST') || log.action.includes('DOCUMENT');
+
+              let badgeStyle = 'bg-slate-800 text-slate-300';
+              if (isRollback) badgeStyle = 'bg-purple-950 text-purple-300 border border-purple-800';
+              else if (isKisht) badgeStyle = 'bg-cyan-950 text-cyan-300 border border-cyan-800';
+              else if (isLoan) badgeStyle = 'bg-amber-950 text-amber-300 border border-amber-800';
+              else if (isPayment) badgeStyle = 'bg-emerald-950 text-emerald-300 border border-emerald-800';
 
               return (
                 <div
@@ -77,12 +94,7 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5">
-                      <span className={`px-1.5 py-0.2 rounded font-black text-[9px] uppercase tracking-wider ${
-                        isRollback ? 'bg-purple-950 text-purple-300 border border-purple-800' :
-                        isLoan ? 'bg-amber-950 text-amber-300 border border-amber-800' :
-                        isPayment ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' :
-                        'bg-slate-800 text-slate-300'
-                      }`}>
+                      <span className={`px-1.5 py-0.5 rounded font-black text-[9px] uppercase tracking-wider ${badgeStyle}`}>
                         {log.action}
                       </span>
                       <span className="text-[11px] font-bold text-white flex items-center gap-1">

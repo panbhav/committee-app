@@ -140,12 +140,12 @@ export const translations = {
     disburseSubmitBtn: "Disburse & Issue Loan",
 
     // Activity Logs Modal
-    activityLogsTitle: "Transparent Activity Logs",
-    activityLogsSubtitle: "Complete audit trail visible to all members",
-    allLogs: "All Logs",
+    activityLogsTitle: "Financial Activity Logs",
+    activityLogsSubtitle: "Financial transactions & loan records audit trail",
+    allLogs: "All Transactions",
     paymentsFilter: "Payments",
-    loansFilter: "Loans",
-    noLogsRecorded: "No activity recorded yet.",
+    loansFilter: "Loans & Kishts",
+    noLogsRecorded: "No transaction activity recorded yet.",
     revertAction: "Revert",
 
     // Login Screen
@@ -322,12 +322,12 @@ export const translations = {
     disburseSubmitBtn: "लोन स्वीकृत व जारी करें",
 
     // Activity Logs Modal
-    activityLogsTitle: "पारदर्शी गतिविधि लॉग्स (बहीखाता)",
-    activityLogsSubtitle: "सभी सदस्यों के लिए पूर्ण पारदर्शी इतिहास",
-    allLogs: "सभी लॉग्स",
+    activityLogsTitle: "पारदर्शी बहीखाता (Audit Logs)",
+    activityLogsSubtitle: "वित्तीय लेन-देन व लोन किश्तों का पूर्ण रिकॉर्ड",
+    allLogs: "सभी लेन-देन",
     paymentsFilter: "भुगतान",
-    loansFilter: "लोन",
-    noLogsRecorded: "अभी तक कोई गतिविधि दर्ज नहीं है।",
+    loansFilter: "लोन व किश्तें",
+    noLogsRecorded: "अभी तक कोई वित्तीय गतिविधि दर्ज नहीं है।",
     revertAction: "पूर्ववत करें (Undo)",
 
     // Login Screen
