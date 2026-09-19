@@ -1,7 +1,7 @@
-﻿// Exact September data from the 4 sheets
+// Exact September data from the 4 sheets
 
 export const INITIAL_MEMBERS = [
-  { id: 1, name: "AVNISH", phone: "9800000001", role: "member", memberLimit: 200000, outerLimit: 800000 },
+  { id: 1, name: "AVNISH", phone: "6378021059", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 2, name: "GAGAN", phone: "9800000002", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 3, name: "HARISH", phone: "9800000003", role: "admin", memberLimit: 200000, outerLimit: 800000 }, // Super Admin
   { id: 4, name: "MAHENDRA", phone: "9800000004", role: "member", memberLimit: 200000, outerLimit: 800000 },
@@ -15,13 +15,13 @@ export const INITIAL_MEMBERS = [
   { id: 12, name: "VIPIN", phone: "9800000012", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 13, name: "YASH", phone: "9800000013", role: "member", memberLimit: 200000, outerLimit: 800000 },
   { id: 14, name: "TARUN", phone: "9800000014", role: "member", memberLimit: 200000, outerLimit: 800000 },
-  { id: 15, name: "NARENDRA", phone: "9800000015", role: "admin", memberLimit: 200000, outerLimit: 800000 }, // Super Admin
+  { id: 15, name: "NARENDRA", phone: "8219352124", role: "admin", memberLimit: 200000, outerLimit: 800000 }, // Super Admin
 ];
 
 export const INITIAL_LOANS = [
   // SELF LOANS (10% Interest, 12 months)
-  { id: 265, borrowerName: "AVNISH", borrowerPhone: "9800000001", guarantor: "AVNISH", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 9, totalMonths: 12, securityFee: 0 },
-  { id: 270, borrowerName: "AVNISH", borrowerPhone: "9800000001", guarantor: "AVNISH", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 11, totalMonths: 12, securityFee: 0 },
+  { id: 265, borrowerName: "AVNISH", borrowerPhone: "6378021059", guarantor: "AVNISH", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 9, totalMonths: 12, securityFee: 0 },
+  { id: 270, borrowerName: "AVNISH", borrowerPhone: "6378021059", guarantor: "AVNISH", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 11, totalMonths: 12, securityFee: 0 },
   { id: 257, borrowerName: "GAGAN", borrowerPhone: "9800000002", guarantor: "GAGAN", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 5, totalMonths: 12, securityFee: 0 },
   { id: 269, borrowerName: "GAGAN", borrowerPhone: "9800000002", guarantor: "GAGAN", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 10, totalMonths: 12, securityFee: 0 },
   { id: 261, borrowerName: "HARISH", borrowerPhone: "9800000003", guarantor: "HARISH", type: "self", principal: 50000, rate: 10, monthlyKisht: 4583, currentMonth: 8, totalMonths: 12, securityFee: 0 },
@@ -30,8 +30,8 @@ export const INITIAL_LOANS = [
   { id: 271, borrowerName: "MANOJ", borrowerPhone: "9800000005", guarantor: "MANOJ", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 11, totalMonths: 12, securityFee: 0 },
   { id: 272, borrowerName: "MANOJ", borrowerPhone: "9800000005", guarantor: "MANOJ", type: "self", principal: 50000, rate: 10, monthlyKisht: 4583, currentMonth: 12, totalMonths: 12, securityFee: 0 },
   { id: 260, borrowerName: "MANSINGH", borrowerPhone: "9800000006", guarantor: "MANSINGH", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 7, totalMonths: 12, securityFee: 0 },
-  { id: 244, borrowerName: "NARENDRA", borrowerPhone: "9800000015", guarantor: "NARENDRA", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 1, totalMonths: 12, securityFee: 0 },
-  { id: 273, borrowerName: "NARENDRA", borrowerPhone: "9800000015", guarantor: "NARENDRA", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 12, totalMonths: 12, securityFee: 0 },
+  { id: 244, borrowerName: "NARENDRA", borrowerPhone: "8219352124", guarantor: "NARENDRA", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 1, totalMonths: 12, securityFee: 0 },
+  { id: 273, borrowerName: "NARENDRA", borrowerPhone: "8219352124", guarantor: "NARENDRA", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 12, totalMonths: 12, securityFee: 0 },
   { id: 250, borrowerName: "NARESH", borrowerPhone: "9800000007", guarantor: "NARESH", type: "self", principal: 50000, rate: 10, monthlyKisht: 4583, currentMonth: 4, totalMonths: 12, securityFee: 0 },
   { id: 259, borrowerName: "NARESH", borrowerPhone: "9800000007", guarantor: "NARESH", type: "self", principal: 100000, rate: 10, monthlyKisht: 9167, currentMonth: 6, totalMonths: 12, securityFee: 0 },
   { id: 243, borrowerName: "NEERAJ", borrowerPhone: "9800000008", guarantor: "NEERAJ", type: "self", principal: 50000, rate: 10, monthlyKisht: 4583, currentMonth: 1, totalMonths: 12, securityFee: 0 },

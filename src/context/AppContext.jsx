@@ -29,7 +29,14 @@ export function AppProvider({ children }) {
   // Persistence via localStorage
   const [members, setMembers] = useState(() => {
     const saved = localStorage.getItem('comm_members');
-    return saved ? JSON.parse(saved) : INITIAL_MEMBERS;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      return parsed.map(m => {
+        const initial = INITIAL_MEMBERS.find(im => im.id === m.id);
+        return initial ? { ...m, phone: initial.phone } : m;
+      });
+    }
+    return INITIAL_MEMBERS;
   });
 
 
