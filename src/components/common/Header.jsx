@@ -13,6 +13,8 @@ export default function Header() {
     setCurrentOuterLoanId,
     isSuperAdmin,
     meetingMonth,
+    AVAILABLE_MONTHS,
+    changeMeetingMonth,
     auditLogs,
     lang,
     t,
@@ -39,7 +41,18 @@ export default function Header() {
                 {t.appTitle}
               </h1>
               <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
-                <span>{meetingMonth}</span>
+                <select
+                  value={meetingMonth}
+                  onChange={(e) => changeMeetingMonth(e.target.value)}
+                  className="bg-slate-800/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded px-1.5 py-0.5 text-[10px] font-bold focus:outline-none focus:border-emerald-500 cursor-pointer transition"
+                  title="Switch Meeting Month / महीना बदलें"
+                >
+                  {AVAILABLE_MONTHS.map(m => (
+                    <option key={m} value={m} className="bg-slate-900 text-white text-xs">
+                      {m}
+                    </option>
+                  ))}
+                </select>
                 <span className="text-slate-600">•</span>
                 <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
                   cloudSyncStatus === 'connected'

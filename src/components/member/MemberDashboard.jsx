@@ -8,7 +8,7 @@ import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, Fil
 
 
 export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahikhata }) {
-  const { currentUser, getMemberBill, getMemberLimits, payments, loans, members, meetingMonth, updateLoanDocuments, t } = useApp();
+  const { currentUser, getMemberBill, getMemberLimits, payments, loans, members, meetingMonth, meetingDate, AVAILABLE_MONTHS, changeMeetingMonth, updateLoanDocuments, t } = useApp();
   const [viewingDoc, setViewingDoc] = useState(null);
   const [attachDocLoan, setAttachDocLoan] = useState(null);
 
@@ -36,7 +36,7 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
 
   const sendWhatsAppReminder = (borrowerName, amount, month, totalMonths, phone) => {
     const text = encodeURIComponent(
-      `Namaste ${borrowerName} ji! Ye September Banking Society ki kisht (${formatINR(amount)}, Mahina ${month}/${totalMonths || 12}) jama karne ka reminder hai. Kripya meeting se pehle jama kar dein. Dhanyawad - ${currentUser.name}`
+      `Namaste ${borrowerName} ji! Ye ${meetingMonth} Banking Society ki kisht (${formatINR(amount)}, Mahina ${month}/${totalMonths || 12}) jama karne ka reminder hai. Kripya meeting se pehle jama kar dein. Dhanyawad - ${currentUser.name}`
     );
     const phoneNum = phone ? '91' + phone.replace(/\D/g, '') : '';
     window.open(`https://wa.me/${phoneNum}?text=${text}`, '_blank');
@@ -48,7 +48,7 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
       <div className="bg-gradient-to-br from-indigo-950/60 via-slate-900 to-slate-950 border border-indigo-500/30 rounded-3xl p-4 shadow-xl">
         <div className="flex justify-between items-start mb-2">
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400 bg-indigo-950/80 border border-indigo-800/50 px-2 py-0.5 rounded-full">
                 {t.memberPortal}
               </span>
@@ -57,6 +57,21 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                   {t.adminBadge}
                 </span>
               )}
+              <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-300">
+                <Calendar className="w-2.5 h-2.5 text-indigo-400 shrink-0" />
+                <select
+                  value={meetingMonth}
+                  onChange={(e) => changeMeetingMonth(e.target.value)}
+                  className="bg-transparent text-slate-200 text-[10px] font-bold focus:outline-none cursor-pointer"
+                  title="Select Month / महीना चुनें"
+                >
+                  {AVAILABLE_MONTHS.map(m => (
+                    <option key={m} value={m} className="bg-slate-900 text-white text-xs">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
             <h2 className="text-2xl font-black text-white mt-1">
               {t.namaste}, {currentUser.name}! 👋
@@ -81,7 +96,7 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                   <Clock className="w-3.5 h-3.5" /> {t.pendingDeposit}
                 </span>
                 <span className="text-[10px] text-slate-400 block mt-1">
-                  {t.due}: 10 Sep 2026
+                  {t.due}: {meetingDate}
                 </span>
               </div>
             )}

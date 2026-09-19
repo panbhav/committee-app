@@ -12,6 +12,8 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
     payments,
     meetingMonth,
     meetingDate,
+    AVAILABLE_MONTHS,
+    changeMeetingMonth,
     getMemberBill,
     getMeetingStats,
     getMemberLimits,
@@ -78,10 +80,45 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2 py-0.5 rounded-full">
                 {t.meetingCashflow}
               </span>
-              <span className="text-[10px] font-bold text-slate-300 bg-slate-800 border border-slate-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                <Calendar className="w-2.5 h-2.5 text-emerald-400" />
-                {meetingDate}
-              </span>
+              <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 px-2 py-0.5 rounded-full text-[11px] font-bold text-slate-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = AVAILABLE_MONTHS.indexOf(meetingMonth);
+                    if (idx > 0) changeMeetingMonth(AVAILABLE_MONTHS[idx - 1]);
+                  }}
+                  disabled={AVAILABLE_MONTHS.indexOf(meetingMonth) <= 0}
+                  className="text-slate-400 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-400 px-1 text-sm font-bold leading-none cursor-pointer"
+                  title="Previous Month / पिछला महीना"
+                >
+                  ‹
+                </button>
+                <Calendar className="w-3 h-3 text-emerald-400 shrink-0" />
+                <select
+                  value={meetingMonth}
+                  onChange={(e) => changeMeetingMonth(e.target.value)}
+                  className="bg-transparent text-slate-200 text-[11px] font-bold focus:outline-none cursor-pointer pr-1"
+                  title="Select Month / महीना चुनें"
+                >
+                  {AVAILABLE_MONTHS.map(m => (
+                    <option key={m} value={m} className="bg-slate-900 text-white text-xs">
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const idx = AVAILABLE_MONTHS.indexOf(meetingMonth);
+                    if (idx < AVAILABLE_MONTHS.length - 1) changeMeetingMonth(AVAILABLE_MONTHS[idx + 1]);
+                  }}
+                  disabled={AVAILABLE_MONTHS.indexOf(meetingMonth) >= AVAILABLE_MONTHS.length - 1}
+                  className="text-slate-400 hover:text-emerald-400 disabled:opacity-30 disabled:hover:text-slate-400 px-1 text-sm font-bold leading-none cursor-pointer"
+                  title="Next Month / अगला महीना"
+                >
+                  ›
+                </button>
+              </div>
             </div>
             <div className="text-2xl font-black text-white mt-1">
               {formatINR(stats.totalExpected)}

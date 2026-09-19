@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { INITIAL_MEMBERS, INITIAL_LOANS } from '../data/initialData';
+import { INITIAL_MEMBERS, INITIAL_LOANS, AVAILABLE_MONTHS } from '../data/initialData';
 import { translations } from '../data/translations';
 import { calculateKisht, calculateSecurityFee, getStandardRate } from '../utils/loanCalculator';
 import { db, doc, setDoc, onSnapshot } from '../services/firebase';
@@ -104,15 +104,40 @@ export function AppProvider({ children }) {
            d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  // Payments log for current meeting month
-  const [payments, setPayments] = useState(() => {
-    const saved = localStorage.getItem('comm_payments');
-    if (saved) return JSON.parse(saved);
+  const defaultPendingPayments = () => {
     const initial = {};
     INITIAL_MEMBERS.forEach(m => {
       initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0, paidAt: null, paidBy: null };
     });
     return initial;
+  };
+
+  // Payments stored per month so all historical & future months are preserved
+  const [paymentsByMonth, setPaymentsByMonth] = useState(() => {
+    const saved = localStorage.getItem('comm_payments_by_month');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    const legacy = localStorage.getItem('comm_payments');
+    const initialSep = legacy ? JSON.parse(legacy) : defaultPendingPayments();
+    return {
+      'September 2026': initialSep
+    };
+  });
+
+  // Active Payments log for currently selected meeting month
+  const [payments, setPayments] = useState(() => {
+    const currentMonth = localStorage.getItem('comm_meeting_month') || 'September 2026';
+    const savedByMonth = localStorage.getItem('comm_payments_by_month');
+    if (savedByMonth) {
+      try {
+        const parsed = JSON.parse(savedByMonth);
+        if (parsed[currentMonth]) return parsed[currentMonth];
+      } catch (e) {}
+    }
+    const saved = localStorage.getItem('comm_payments');
+    if (saved) return JSON.parse(saved);
+    return defaultPendingPayments();
   });
 
   // Full Activity / Audit Log: [{ id, timestamp, actor, action, details, previousState, targetMemberId }]
@@ -198,6 +223,10 @@ export function AppProvider({ children }) {
   }, [meetingDate]);
 
   useEffect(() => {
+    localStorage.setItem('comm_payments_by_month', JSON.stringify(paymentsByMonth));
+  }, [paymentsByMonth]);
+
+  useEffect(() => {
     localStorage.setItem('comm_payments', JSON.stringify(payments));
   }, [payments]);
 
@@ -234,12 +263,23 @@ export function AppProvider({ children }) {
           setMembers(syncedMembers);
         }
         if (d.loans && Array.isArray(d.loans)) setLoans(d.loans);
-        if (d.payments && typeof d.payments === 'object') setPayments(d.payments);
+        if (d.paymentsByMonth && typeof d.paymentsByMonth === 'object') {
+          setPaymentsByMonth(d.paymentsByMonth);
+        }
+        if (d.meetingMonth) {
+          setMeetingMonth(d.meetingMonth);
+          if (d.payments && typeof d.payments === 'object') {
+            setPayments(d.payments);
+          } else if (d.paymentsByMonth && d.paymentsByMonth[d.meetingMonth]) {
+            setPayments(d.paymentsByMonth[d.meetingMonth]);
+          }
+        } else if (d.payments && typeof d.payments === 'object') {
+          setPayments(d.payments);
+        }
         if (d.auditLogs && Array.isArray(d.auditLogs)) setAuditLogs(d.auditLogs);
         if (d.loanRequests && Array.isArray(d.loanRequests)) setLoanRequests(d.loanRequests);
         if (d.monthlyUnit !== undefined) setMonthlyUnit(d.monthlyUnit);
         if (d.availableCashFund !== undefined) setAvailableCashFund(d.availableCashFund);
-        if (d.meetingMonth) setMeetingMonth(d.meetingMonth);
         if (d.meetingDate) setMeetingDate(d.meetingDate);
         if (d.annualMeetingConfig && typeof d.annualMeetingConfig === 'object') {
           setAnnualMeetingConfig(d.annualMeetingConfig);
@@ -251,6 +291,7 @@ export function AppProvider({ children }) {
           members: INITIAL_MEMBERS,
           loans: INITIAL_LOANS,
           payments,
+          paymentsByMonth,
           auditLogs,
           loanRequests,
           monthlyUnit,
@@ -354,6 +395,69 @@ export function AppProvider({ children }) {
     };
   };
 
+  // Update payments for currently active meeting month and sync to cloud
+  const updateCurrentMonthPayments = (newPayments, logEntry = null) => {
+    setPayments(newPayments);
+    const updatedByMonth = {
+      ...paymentsByMonth,
+      [meetingMonth]: newPayments
+    };
+    setPaymentsByMonth(updatedByMonth);
+
+    let updatedLogs = auditLogs;
+    if (logEntry) {
+      updatedLogs = [logEntry, ...auditLogs];
+      setAuditLogs(updatedLogs);
+    }
+
+    syncToCloud({
+      payments: newPayments,
+      paymentsByMonth: updatedByMonth,
+      ...(logEntry ? { auditLogs: updatedLogs } : {})
+    });
+  };
+
+  // Switch meeting month dynamically (any historical or future month)
+  const changeMeetingMonth = (newMonth) => {
+    if (!newMonth || newMonth === meetingMonth) return;
+
+    const parts = newMonth.split(' ');
+    const monthShort = parts[0].slice(0, 3);
+    const year = parts[1] || '2026';
+    const newDate = `10 ${monthShort} ${year}`;
+
+    const monthPayments = paymentsByMonth[newMonth] || defaultPendingPayments();
+
+    setMeetingMonth(newMonth);
+    setMeetingDate(newDate);
+    setPayments(monthPayments);
+
+    const updatedByMonth = {
+      ...paymentsByMonth,
+      [newMonth]: monthPayments
+    };
+    setPaymentsByMonth(updatedByMonth);
+
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: getFormattedTimestamp(),
+      actor: currentUser ? currentUser.name : 'ADMIN',
+      action: 'MONTH_CHANGED',
+      details: `Switched meeting month to ${newMonth} (${newDate}).`,
+      canRollback: false
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({
+      meetingMonth: newMonth,
+      meetingDate: newDate,
+      payments: monthPayments,
+      paymentsByMonth: updatedByMonth,
+      auditLogs: updatedLogs
+    });
+  };
+
   // Mark a member as paid / unpaid with Undo & Audit Trail
   const toggleMemberPaid = (memberId) => {
     const member = members.find(m => m.id === memberId);
@@ -375,7 +479,6 @@ export function AppProvider({ children }) {
         paidBy: newStatus === 'paid' ? actorName : null
       }
     };
-    setPayments(updatedPayments);
 
     const logEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
@@ -383,15 +486,13 @@ export function AppProvider({ children }) {
       actor: actorName,
       action: newStatus === 'paid' ? 'MARKED_PAID' : 'REVERTED_PAID',
       details: newStatus === 'paid'
-        ? `Marked ${member.name} as fully PAID (₹${bill.totalDue.toLocaleString()}).`
-        : `Reverted ${member.name} back to PENDING.`,
+        ? `Marked ${member.name} as fully PAID (₹${bill.totalDue.toLocaleString()}) for ${meetingMonth}.`
+        : `Reverted ${member.name} back to PENDING for ${meetingMonth}.`,
       canRollback: true,
       rollbackData: { type: 'payment', memberId, previousState: current }
     };
-    const updatedLogs = [logEntry, ...auditLogs];
-    setAuditLogs(updatedLogs);
 
-    syncToCloud({ payments: updatedPayments, auditLogs: updatedLogs });
+    updateCurrentMonthPayments(updatedPayments, logEntry);
   };
 
   // Record custom payment (partial / short) with Audit Trail
@@ -413,21 +514,18 @@ export function AppProvider({ children }) {
         paidBy: actorName
       }
     };
-    setPayments(updatedPayments);
 
     const logEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       timestamp: timestampNow,
       actor: actorName,
       action: 'RECORDED_PARTIAL',
-      details: `Updated ${member.name}: Deposit ₹${Number(depositAmount).toLocaleString()}${shortAmount > 0 ? `, Short ₹${shortAmount.toLocaleString()}` : ''}${extraAmount > 0 ? `, Extra ₹${extraAmount.toLocaleString()}` : ''}.`,
+      details: `Updated ${member.name} (${meetingMonth}): Deposit ₹${Number(depositAmount).toLocaleString()}${shortAmount > 0 ? `, Short ₹${shortAmount.toLocaleString()}` : ''}${extraAmount > 0 ? `, Extra ₹${extraAmount.toLocaleString()}` : ''}.`,
       canRollback: true,
       rollbackData: { type: 'payment', memberId, previousState: current }
     };
-    const updatedLogs = [logEntry, ...auditLogs];
-    setAuditLogs(updatedLogs);
 
-    syncToCloud({ payments: updatedPayments, auditLogs: updatedLogs });
+    updateCurrentMonthPayments(updatedPayments, logEntry);
   };
 
   // One-tap mark all paid with Audit Trail
@@ -447,21 +545,18 @@ export function AppProvider({ children }) {
         paidBy: actorName
       };
     });
-    setPayments(newPayments);
 
     const logEntry = {
       id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
       timestamp: timestampNow,
       actor: actorName,
       action: 'MARKED_ALL_PAID',
-      details: 'One-tap: Marked all 15 members as fully paid for the meeting.',
+      details: `One-tap: Marked all 15 members as fully paid for ${meetingMonth}.`,
       canRollback: true,
       rollbackData: { type: 'all_payments', previousPayments }
     };
-    const updatedLogs = [logEntry, ...auditLogs];
-    setAuditLogs(updatedLogs);
 
-    syncToCloud({ payments: newPayments, auditLogs: updatedLogs });
+    updateCurrentMonthPayments(newPayments, logEntry);
   };
 
   // Rollback a past action from log
@@ -470,13 +565,14 @@ export function AppProvider({ children }) {
 
     if (logEntry.rollbackData.type === 'payment') {
       const { memberId, previousState } = logEntry.rollbackData;
-      setPayments(prev => ({
-        ...prev,
+      const updatedPayments = {
+        ...payments,
         [memberId]: previousState
-      }));
+      };
+      updateCurrentMonthPayments(updatedPayments);
       addLog('ROLLBACK', `Undid action: ${logEntry.action} (${logEntry.details})`, false);
     } else if (logEntry.rollbackData.type === 'all_payments') {
-      setPayments(logEntry.rollbackData.previousPayments);
+      updateCurrentMonthPayments(logEntry.rollbackData.previousPayments);
       addLog('ROLLBACK', `Undid: One-tap mark all paid. Restored previous states.`, false);
     } else if (logEntry.rollbackData.type === 'new_loan') {
       const { loanId } = logEntry.rollbackData;
@@ -747,11 +843,10 @@ export function AppProvider({ children }) {
     setAvailableCashFund(150000);
     setMeetingMonth('September 2026');
     setMeetingDate('10 Sep 2026');
-    const initial = {};
-    INITIAL_MEMBERS.forEach(m => {
-      initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0, paidAt: null, paidBy: null };
-    });
+    const initial = defaultPendingPayments();
     setPayments(initial);
+    const resetByMonth = { 'September 2026': initial };
+    setPaymentsByMonth(resetByMonth);
     const resetLogs = [
       {
         id: 'init-reset',
@@ -773,6 +868,7 @@ export function AppProvider({ children }) {
       meetingMonth: 'September 2026',
       meetingDate: '10 Sep 2026',
       payments: initial,
+      paymentsByMonth: resetByMonth,
       auditLogs: resetLogs
     });
   };
@@ -788,6 +884,7 @@ export function AppProvider({ children }) {
       setLanguage,
       t,
       toggleLanguage,
+      AVAILABLE_MONTHS,
       members,
       loans,
       monthlyUnit,
@@ -798,8 +895,10 @@ export function AppProvider({ children }) {
       setMeetingMonth,
       meetingDate,
       setMeetingDate,
+      changeMeetingMonth,
       getFormattedTimestamp,
       payments,
+      paymentsByMonth,
       auditLogs,
       loanRequests,
       submitLoanRequest,
