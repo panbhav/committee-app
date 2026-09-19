@@ -11,10 +11,17 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
   const [borrowerName, setBorrowerName] = useState('');
   const [borrowerPhone, setBorrowerPhone] = useState('');
   const [borrowerAddress, setBorrowerAddress] = useState('');
+  const [borrowerAadhar, setBorrowerAadhar] = useState('');
   const [principal, setPrincipal] = useState('50000');
   const [chargedRate, setChargedRate] = useState('16');
   const [note, setNote] = useState('');
   const [instantDisburse, setInstantDisburse] = useState(false);
+
+  const handleAadharChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 12);
+    const formatted = raw.replace(/(\d{4})(?=\d)/g, '$1 ');
+    setBorrowerAadhar(formatted);
+  };
 
   // Sync default charged rate with tenure
   useEffect(() => {
@@ -46,9 +53,16 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (type === 'outer' && !borrowerName.trim()) {
-      alert('Please enter outsider borrower name');
-      return;
+    if (type === 'outer') {
+      if (!borrowerName.trim()) {
+        alert('Please enter outsider borrower name');
+        return;
+      }
+      const cleanAadhar = borrowerAadhar.replace(/\D/g, '');
+      if (cleanAadhar.length !== 12) {
+        alert('Kripya outsider borrower ka sahi 12-digit Aadhaar number darj karein (12 अंक आधार नंबर अनिवार्य है)।');
+        return;
+      }
     }
     if (numPrincipal <= 0) {
       alert('Please enter valid amount');
@@ -62,6 +76,8 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
       const createdLoan = disburseLoan({
         borrowerName: bName,
         borrowerPhone: type === 'self' ? currentUser.phone : borrowerPhone,
+        borrowerAddress,
+        borrowerAadhar: type === 'outer' ? borrowerAadhar.trim() : '',
         guarantor: currentUser.name,
         type,
         principal: numPrincipal,
@@ -81,6 +97,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
         borrowerName: bName,
         borrowerPhone: type === 'self' ? currentUser.phone : borrowerPhone,
         borrowerAddress,
+        borrowerAadhar: type === 'outer' ? borrowerAadhar.trim() : '',
         principal: numPrincipal,
         totalMonths,
         chargedRate: type === 'outer' ? numChargedRate : standardRate,
@@ -225,6 +242,22 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500"
                   />
                 </div>
+              </div>
+
+              {/* Outsider Aadhaar Number */}
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">
+                  Outsider Aadhaar Number (12 अंक आधार नंबर) <span className="text-amber-400 font-bold">*</span>:
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={14}
+                  placeholder="1234 5678 9012"
+                  value={borrowerAadhar}
+                  onChange={handleAadharChange}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-amber-500 font-mono tracking-wider font-semibold"
+                />
               </div>
 
               {/* Outsider Interest Rate Choice (Requirement 2) */}

@@ -10,9 +10,16 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
   const [totalMonths, setTotalMonths] = useState(12); // 12 | 6
   const [borrowerName, setBorrowerName] = useState('');
   const [borrowerPhone, setBorrowerPhone] = useState('');
+  const [borrowerAadhar, setBorrowerAadhar] = useState('');
   const [guarantor, setGuarantor] = useState(members[0]?.name || 'AVNISH');
   const [principal, setPrincipal] = useState('100000');
   const [chargedRate, setChargedRate] = useState('16');
+
+  const handleAadharChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 12);
+    const formatted = raw.replace(/(\d{4})(?=\d)/g, '$1 ');
+    setBorrowerAadhar(formatted);
+  };
 
   // Keep default charged rate in sync with duration
   useEffect(() => {
@@ -50,6 +57,13 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
       alert('Please enter borrower name');
       return;
     }
+    if (type === 'outer') {
+      const cleanAadhar = borrowerAadhar.replace(/\D/g, '');
+      if (cleanAadhar.length !== 12) {
+        alert('Please enter a valid 12-digit Aadhaar number for the outsider borrower (12 अंक आधार नंबर अनिवार्य है)।');
+        return;
+      }
+    }
     if (numPrincipal <= 0) {
       alert('Please enter valid amount');
       return;
@@ -63,6 +77,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
     const createdLoan = disburseLoan({
       borrowerName,
       borrowerPhone,
+      borrowerAadhar: type === 'outer' ? borrowerAadhar.trim() : '',
       guarantor: type === 'self' ? borrowerName : guarantor,
       type,
       principal: numPrincipal,
@@ -212,6 +227,24 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
                 value={borrowerPhone}
                 onChange={(e) => setBorrowerPhone(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-medium focus:border-amber-500 focus:outline-none font-mono"
+              />
+            </div>
+          )}
+
+          {/* Aadhaar Number (for Outer Loans) */}
+          {type === 'outer' && (
+            <div>
+              <label className="text-slate-300 font-semibold block mb-1">
+                Outsider Aadhaar Number (12 अंक आधार नंबर) <span className="text-amber-400 font-bold">*</span>:
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={14}
+                placeholder="1234 5678 9012"
+                value={borrowerAadhar}
+                onChange={handleAadharChange}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-medium focus:border-amber-500 focus:outline-none font-mono tracking-wider font-semibold"
               />
             </div>
           )}

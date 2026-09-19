@@ -55,6 +55,16 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                       <div className="font-bold text-sm text-white mt-1">
                         {req.borrowerName}
                       </div>
+                      {req.borrowerPhone && (
+                        <div className="text-[10px] text-slate-400 font-mono">
+                          Ph: {req.borrowerPhone}
+                        </div>
+                      )}
+                      {req.borrowerAadhar && (
+                        <div className="text-[10px] text-amber-300 font-mono">
+                          Aadhaar: {req.borrowerAadhar}
+                        </div>
+                      )}
                       <div className="text-[11px] text-slate-400">
                         {t.requestedByMember} <b className="text-indigo-400">{req.requestedBy}</b>
                       </div>

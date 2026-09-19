@@ -450,7 +450,7 @@ export function AppProvider({ children }) {
   };
 
   // Submit a loan request by any member
-  const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, principal, note, totalMonths = 12, chargedRate = null }) => {
+  const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, principal, note, totalMonths = 12, chargedRate = null }) => {
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
     const kisht = calculateKisht(principal, type, m);
@@ -465,6 +465,7 @@ export function AppProvider({ children }) {
       borrowerName,
       borrowerPhone,
       borrowerAddress,
+      borrowerAadhar: borrowerAadhar || '',
       principal,
       totalMonths: m,
       rate: standardRate,
@@ -496,6 +497,8 @@ export function AppProvider({ children }) {
     disburseLoan({
       borrowerName: req.borrowerName,
       borrowerPhone: req.borrowerPhone,
+      borrowerAddress: req.borrowerAddress,
+      borrowerAadhar: req.borrowerAadhar || '',
       guarantor: req.requestedBy,
       type: req.type,
       principal: req.principal,
@@ -521,7 +524,7 @@ export function AppProvider({ children }) {
   };
 
   // Disburse a brand new loan with Audit Trail
-  const disburseLoan = ({ borrowerName, borrowerPhone, guarantor, type, principal, totalMonths = 12, chargedRate = null }) => {
+  const disburseLoan = ({ borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, guarantor, type, principal, totalMonths = 12, chargedRate = null }) => {
     const p = Number(principal);
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
@@ -540,6 +543,8 @@ export function AppProvider({ children }) {
       id: nextId,
       borrowerName: borrowerName.toUpperCase(),
       borrowerPhone: borrowerPhone || '9800000000',
+      borrowerAddress: borrowerAddress || '',
+      borrowerAadhar: borrowerAadhar || '',
       guarantor: type === 'self' ? borrowerName.toUpperCase() : guarantor.toUpperCase(),
       type,
       principal: p,

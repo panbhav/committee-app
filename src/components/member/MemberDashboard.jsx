@@ -204,6 +204,11 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                             <span>{timeline.startMonth} — {timeline.endMonth}</span>
                           </div>
                           <div>Month {l.currentMonth} of {totalM} • Principal: {formatINR(l.principal)}</div>
+                          {l.borrowerAadhar && (
+                            <div className="text-[10px] text-amber-300/90 font-mono">
+                              Aadhaar: {l.borrowerAadhar}
+                            </div>
+                          )}
                         </div>
                       </div>
 

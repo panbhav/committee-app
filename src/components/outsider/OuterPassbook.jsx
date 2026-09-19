@@ -44,6 +44,11 @@ export default function OuterPassbook() {
             <p className="text-xs text-slate-400">
               Loan Account #{loan.id} • {effectiveRate}% Flat
             </p>
+            {loan.borrowerAadhar && (
+              <p className="text-[11px] text-amber-300 font-mono mt-0.5">
+                Aadhaar: {loan.borrowerAadhar}
+              </p>
+            )}
           </div>
 
           <span className="text-xs font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2.5 py-1 rounded-full">
