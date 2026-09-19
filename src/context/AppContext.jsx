@@ -578,7 +578,98 @@ export function AppProvider({ children }) {
       const { loanId } = logEntry.rollbackData;
       setLoans(prev => prev.filter(l => l.id !== loanId));
       addLog('ROLLBACK', `Cancelled loan #${loanId} and restored limits.`, false);
+    } else if (logEntry.rollbackData.type === 'loan_kisht') {
+      const { loanId, previousMonth } = logEntry.rollbackData;
+      setLoans(prev => prev.map(l => l.id === loanId ? { ...l, currentMonth: previousMonth } : l));
+      addLog('ROLLBACK', `Undid Kisht update for loan #${loanId}. Restored to Month ${previousMonth}.`, false);
     }
+  };
+
+  // Update Kisht (Current Month / Remaining) for a specific loan with Audit Trail & Cloud Sync
+  const updateLoanKisht = (loanId, newMonth) => {
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan) return;
+
+    const totalM = loan.totalMonths || 12;
+    const clampedMonth = Math.max(1, Math.min(totalM, Number(newMonth)));
+    const remaining = totalM - clampedMonth;
+
+    const updatedLoans = loans.map(l => {
+      if (l.id === loanId) {
+        return {
+          ...l,
+          currentMonth: clampedMonth
+        };
+      }
+      return l;
+    });
+
+    setLoans(updatedLoans);
+
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: getFormattedTimestamp(),
+      actor: currentUser ? currentUser.name : 'ADMIN',
+      action: 'KISHT_UPDATED',
+      details: `Updated Loan #${loanId} (${loan.borrowerName}): Set to Month ${clampedMonth}/${totalM} (${remaining} kishts remaining).`,
+      canRollback: true,
+      rollbackData: { type: 'loan_kisht', loanId, previousMonth: loan.currentMonth }
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
+  };
+
+  // Smart Bulk Advance: increment currentMonth by +1 for all active loans
+  const advanceAllActiveLoans = () => {
+    const updatedLoans = loans.map(l => {
+      const totalM = l.totalMonths || 12;
+      if (l.currentMonth < totalM) {
+        return { ...l, currentMonth: l.currentMonth + 1 };
+      }
+      return l;
+    });
+
+    setLoans(updatedLoans);
+
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: getFormattedTimestamp(),
+      actor: currentUser ? currentUser.name : 'ADMIN',
+      action: 'ALL_KISHTS_ADVANCED',
+      details: `Advanced all active loans by +1 kisht/month for ${meetingMonth}.`,
+      canRollback: false
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
+  };
+
+  // Smart Bulk Revert: decrement currentMonth by -1 for all active loans
+  const revertAllActiveLoans = () => {
+    const updatedLoans = loans.map(l => {
+      if (l.currentMonth > 1) {
+        return { ...l, currentMonth: l.currentMonth - 1 };
+      }
+      return l;
+    });
+
+    setLoans(updatedLoans);
+
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: getFormattedTimestamp(),
+      actor: currentUser ? currentUser.name : 'ADMIN',
+      action: 'ALL_KISHTS_REVERTED',
+      details: `Reverted all active loans by -1 kisht/month.`,
+      canRollback: false
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
   };
 
   // Submit a loan request by a member
@@ -925,6 +1016,9 @@ export function AppProvider({ children }) {
       attachLoanDocument,
       removeLoanDocument,
       updateLoanDocuments,
+      updateLoanKisht,
+      advanceAllActiveLoans,
+      revertAllActiveLoans,
       annualMeetingConfig,
       updateAnnualMeetingConfig,
       getAnnualMeetingStats,

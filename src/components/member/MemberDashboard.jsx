@@ -4,6 +4,7 @@ import { formatINR, getLoanTimeline } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import DocumentViewerModal from '../common/DocumentViewerModal';
 import DocumentAttachmentInput from '../common/DocumentAttachmentInput';
+import KishtProgressStepper from '../common/KishtProgressStepper';
 import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown, Calendar, Paperclip, Eye, Plus, X } from 'lucide-react';
 
 
@@ -222,7 +223,7 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                             <Calendar className="w-3 h-3 text-indigo-400" />
                             <span>{timeline.startMonth} — {timeline.endMonth}</span>
                           </div>
-                          <div>Month {l.currentMonth} of {totalM} • Principal: {formatINR(l.principal)}</div>
+                          <div>Principal: {formatINR(l.principal)}</div>
                           {l.borrowerAadhar && (
                             <div className="text-[10px] text-amber-300/90 font-mono">
                               Aadhaar: {l.borrowerAadhar}
@@ -243,6 +244,11 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                           Remind ({formatINR(outsiderKisht)})
                         </button>
                       </div>
+                    </div>
+
+                    {/* Kisht Progress & Remaining Kishts */}
+                    <div className="pt-1.5 pb-0.5 border-t border-slate-800/60">
+                      <KishtProgressStepper loan={l} />
                     </div>
 
                     {/* Rates & Margin Breakdown if Custom Rate Set */}
@@ -308,31 +314,35 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                 return (
                   <div
                     key={l.id}
-                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between text-xs"
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs"
                   >
-                    <div>
-                      <div className="font-bold text-sm text-white flex items-center gap-1.5">
-                        <span>Personal Loan #{l.id}</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          {totalM}m
-                        </span>
-                      </div>
-                      <div className="text-slate-400 text-[11px] mt-0.5 space-y-0.5">
-                        <div className="text-emerald-300 font-medium flex items-center gap-1">
-                          <Calendar className="w-3 h-3 text-emerald-400" />
-                          <span>{timeline.startMonth} — {timeline.endMonth}</span>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-bold text-sm text-white flex items-center gap-1.5">
+                          <span>Personal Loan #{l.id}</span>
+                          <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800">
+                            {totalM}m
+                          </span>
                         </div>
-                        <div>Kisht {l.currentMonth} of {totalM} ({selfRate}% Interest)</div>
+                        <div className="text-slate-400 text-[11px] mt-0.5 space-y-0.5">
+                          <div className="text-emerald-300 font-medium flex items-center gap-1">
+                            <Calendar className="w-3 h-3 text-emerald-400" />
+                            <span>{timeline.startMonth} — {timeline.endMonth}</span>
+                          </div>
+                          <div>Interest: {selfRate}% Flat • Principal: {formatINR(l.principal)}</div>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="text-sm font-extrabold text-emerald-400">
+                          {formatINR(l.monthlyKisht)} / mo
+                        </span>
                       </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-sm font-extrabold text-emerald-400">
-                        {formatINR(l.monthlyKisht)} / mo
-                      </span>
-                      <span className="text-[10px] text-slate-500 block">
-                        Principal: {formatINR(l.principal)}
-                      </span>
+                    {/* Kisht Progress & Remaining Kishts */}
+                    <div className="pt-1.5 pb-0.5 border-t border-slate-800/60">
+                      <KishtProgressStepper loan={l} />
                     </div>
                   </div>
                 );

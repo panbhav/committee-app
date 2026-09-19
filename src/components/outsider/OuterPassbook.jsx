@@ -81,11 +81,16 @@ export default function OuterPassbook() {
           </div>
         </div>
 
-        {/* 12-Month Progress Bar */}
-        <div className="mt-4 space-y-1.5">
-          <div className="flex justify-between text-xs font-semibold">
+        {/* Progress Bar & Remaining Kishts */}
+        <div className="mt-4 space-y-2">
+          <div className="flex justify-between items-center text-xs font-semibold">
             <span className="text-slate-400">{t.repaymentProgress}:</span>
-            <span className="text-white">{loan.currentMonth} / {loan.totalMonths} ({progressPercent}%)</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-white font-bold">{loan.currentMonth} / {totalMonths} Mos</span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-800/60">
+                {Math.max(0, totalMonths - loan.currentMonth)} Bachi (Remaining)
+              </span>
+            </div>
           </div>
           <div className="w-full bg-slate-950 h-3 rounded-full overflow-hidden p-0.5 border border-slate-800">
             <div
@@ -93,9 +98,9 @@ export default function OuterPassbook() {
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <div className="flex justify-between text-[11px] text-slate-400 pt-1">
+          <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
             <span>{t.paidSoFar}: <b className="text-slate-200">{formatINR(totalPaidSoFar)}</b></span>
-            <span>{t.balance}: <b className="text-emerald-400">{formatINR(remainingBalance)}</b></span>
+            <span>Bachi Rashi (Remaining): <b className="text-emerald-400">{formatINR(remainingBalance)}</b></span>
           </div>
         </div>
       </div>

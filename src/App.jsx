@@ -12,11 +12,12 @@ import PendingLoanRequestsModal from './components/admin/PendingLoanRequestsModa
 import FundManagerModal from './components/admin/FundManagerModal';
 import LoginScreen from './components/common/LoginScreen';
 import ActivityLogsModal from './components/common/ActivityLogsModal';
+import KishtProgressStepper from './components/common/KishtProgressStepper';
 import { formatINR, getLoanTimeline } from './utils/loanCalculator';
 import { Users, FileText, Plus, Search, Bell, Calendar, Building2, User, Send } from 'lucide-react';
 
 export default function App() {
-  const { currentUser, isSuperAdmin, loans, members, getMemberLimits, loanRequests, currentOuterLoanId, t } = useApp();
+  const { currentUser, isSuperAdmin, loans, members, getMemberLimits, loanRequests, currentOuterLoanId, advanceAllActiveLoans, t } = useApp();
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('comm_logged_in') === 'true';
   });
@@ -154,7 +155,20 @@ export default function App() {
                 <h2 className="text-lg font-bold text-white">{t.activeLoansRegister}</h2>
                 <p className="text-xs text-slate-400">Total {loans.length} active loans</p>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Kya aap sabhi active loans ki kisht +1 month aage badhana chahte hain (Advance all loans +1 Month)?')) {
+                        advanceAllActiveLoans();
+                      }
+                    }}
+                    className="bg-amber-950/70 hover:bg-amber-900/70 text-amber-300 border border-amber-800/60 text-[11px] font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow transition active:scale-95"
+                    title="Advance all active loans by +1 month / सभी लोनों की 1 किश्त बढ़ाएं"
+                  >
+                    <span>⚡ Advance +1 Mo</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setIsMemberRequestOpen(true)}
                   className="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow transition"
@@ -205,35 +219,42 @@ export default function App() {
                   return (
                     <div
                       key={l.id}
-                      className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex justify-between items-center text-xs"
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2 text-xs shadow"
                     >
-                      <div>
-                        <div className="flex items-center gap-1.5 font-bold text-white text-sm">
-                          <span>#{l.id} {l.borrowerName}</span>
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
-                            l.type === 'self' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
-                          }`}>
-                            {l.type === 'self' ? `SELF ${l.rate}%` : `OUTER ${l.rate}%`} • {l.totalMonths || 12}m
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-1.5 font-bold text-white text-sm">
+                            <span>#{l.id} {l.borrowerName}</span>
+                            <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+                              l.type === 'self' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'
+                            }`}>
+                              {l.type === 'self' ? `SELF ${l.rate}%` : `OUTER ${l.rate}%`} • {l.totalMonths || 12}m
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-0.5">
+                            {t.guarantor}: <b className="text-slate-200">{l.guarantor}</b>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-indigo-300 mt-1 font-medium bg-slate-950/70 px-2 py-0.5 rounded-lg border border-slate-800/80 w-fit">
+                            <Calendar className="w-2.5 h-2.5 text-indigo-400" />
+                            <span>{timeline.startMonth} — {timeline.endMonth}</span>
+                            <span className="text-slate-500">•</span>
+                            <span className="text-slate-300">Due: {timeline.nextDueDate}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="font-extrabold text-sm text-white">
+                            {formatINR(l.monthlyKisht)} / mo
                           </span>
-                        </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
-                          {t.guarantor}: <b className="text-slate-200">{l.guarantor}</b> • {t.month}: <b className="text-emerald-400">{l.currentMonth}/{l.totalMonths || 12}</b>
-                        </div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-indigo-300 mt-1 font-medium bg-slate-950/70 px-2 py-0.5 rounded-lg border border-slate-800/80 w-fit">
-                          <Calendar className="w-2.5 h-2.5 text-indigo-400" />
-                          <span>{timeline.startMonth} — {timeline.endMonth}</span>
-                          <span className="text-slate-500">•</span>
-                          <span className="text-slate-300">Due: {timeline.nextDueDate}</span>
+                          <span className="text-[10px] text-slate-400 block">
+                            {t.principal}: {formatINR(l.principal)}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="text-right">
-                        <span className="font-extrabold text-sm text-white">
-                          {formatINR(l.monthlyKisht)}
-                        </span>
-                        <span className="text-[10px] text-slate-400 block">
-                          {t.principal}: {formatINR(l.principal)}
-                        </span>
+                      {/* Smart Kisht Progress Stepper */}
+                      <div className="pt-1.5 border-t border-slate-800/80">
+                        <KishtProgressStepper loan={l} />
                       </div>
                     </div>
                   );

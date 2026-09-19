@@ -344,27 +344,31 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
     { key: "principal", label: "PRINCIPAL (₹)", type: "currency", align: "right" },
     { key: "rate", label: "INTEREST RATE", align: "center" },
     { key: "monthlyKisht", label: "MONTHLY KISHT (₹)", type: "currency", align: "right" },
-    { key: "progress", label: "PROGRESS (KISHT)", align: "center" },
+    { key: "month", label: "MONTH (MONT)", align: "center" },
+    { key: "remainingKishts", label: "REMAINING KISHTS", align: "center" },
+    { key: "balanceDue", label: "REMAINING BALANCE (₹)", type: "currency", align: "right" },
     { key: "paidSoFar", label: "PAID SO FAR (₹)", type: "currency", align: "right" },
-    { key: "balanceDue", label: "BALANCE DUE (₹)", type: "currency", align: "right" },
     { key: "securityFee", label: "0.5% SECURITY FEE (₹)", type: "currency", align: "right" }
   ];
 
   const loansData = loans.map(l => {
+    const totalM = l.totalMonths || 12;
     const paidSoFar = l.monthlyKisht * l.currentMonth;
-    const balanceDue = l.monthlyKisht * Math.max(0, l.totalMonths - l.currentMonth);
+    const remKishts = Math.max(0, totalM - l.currentMonth);
+    const balanceDue = l.monthlyKisht * remKishts;
     return {
       id: `#${l.id}`,
       borrowerName: l.borrowerName,
       guarantor: l.guarantor,
-      type: l.type === 'outer' ? `OUTER (${l.rate || (l.totalMonths === 6 ? 8 : 16)}%)` : `SELF (${l.rate || (l.totalMonths === 6 ? 5 : 10)}%)`,
+      type: l.type === 'outer' ? `OUTER (${l.rate || (totalM === 6 ? 8 : 16)}%)` : `SELF (${l.rate || (totalM === 6 ? 5 : 10)}%)`,
       principal: l.principal,
-      rate: `${l.rate || (l.type === 'outer' ? (l.totalMonths === 6 ? 8 : 16) : (l.totalMonths === 6 ? 5 : 10))}% Flat`,
+      rate: `${l.rate || (l.type === 'outer' ? (totalM === 6 ? 8 : 16) : (totalM === 6 ? 5 : 10))}% Flat`,
       monthlyKisht: l.monthlyKisht,
-      progress: `${l.currentMonth} / ${l.totalMonths} Mos`,
-      paidSoFar,
+      month: `${l.currentMonth} / ${totalM}`,
+      remainingKishts: remKishts === 0 ? 'COMPLETED' : `${remKishts} Mos Left`,
       balanceDue,
-      securityFee: l.securityFee
+      paidSoFar,
+      securityFee: l.securityFee || 0
     };
   });
 
@@ -382,20 +386,21 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
     principal: totalPrincipal,
     rate: "-",
     monthlyKisht: totalMonthlyKisht,
-    progress: "-",
-    paidSoFar: totalPaidLoans,
+    month: "-",
+    remainingKishts: "-",
     balanceDue: totalBalanceDue,
+    paidSoFar: totalPaidLoans,
     securityFee: totalSecurityFees
   };
 
   const wsLoans = createStyledSheet({
-    title: "ACTIVE LOANS REGISTER (10% SELF / 16% OUTER FLAT)",
-    subtitle: `Total Active Disbursals: ${loans.length} Loans  •  12-Month Tenure Schedule  •  Generated: ${currentDate}`,
+    title: "ACTIVE LOANS & REMAINING KISHTS REGISTER (SELF & OUTER)",
+    subtitle: `Total Active Disbursals: ${loans.length} Loans  •  Meeting Month: ${meetingMonth}  •  Generated: ${currentDate}`,
     headerBg: COLORS.blueHeader,
     headers: loansHeaders,
     dataRows: loansData,
     totalsRow: loansTotals,
-    colWidths: [12, 22, 18, 16, 18, 16, 19, 18, 18, 18, 22]
+    colWidths: [12, 22, 18, 16, 18, 16, 19, 15, 18, 20, 18, 20]
   });
   XLSX.utils.book_append_sheet(wb, wsLoans, "ACTIVE LOANS");
 
@@ -696,12 +701,133 @@ export function exportToPDF({ members, loans, payments, meetingMonth, getMemberB
     }
   });
 
-  // Footer note
+  // Footer note for Page 1
   const pageHeight = doc.internal.pageSize.height;
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(148, 163, 184);
-  doc.text("Official Banking Society Bahikhata Report  •  100% Peer Verified & Tamper-evident", 10, pageHeight - 6);
+  doc.text("Official Banking Society Bahikhata Report  •  Page 1: Monthly Collections  •  100% Peer Verified", 10, pageHeight - 6);
+
+  // ==========================================
+  // PAGE 2: ACTIVE LOANS & REMAINING KISHTS
+  // ==========================================
+  if (loans && loans.length > 0) {
+    doc.addPage();
+    // Header banner
+    doc.setFillColor(15, 23, 42); // Slate 900
+    doc.rect(0, 0, 210, 18, 'F');
+    doc.setFillColor(15, 118, 110);
+    doc.rect(0, 18, 210, 1.5, 'F');
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text("BANKING SOCIETY - ACTIVE LOANS & REMAINING KISHTS", 10, 8);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text(`Meeting Month: ${meetingMonth}  •  Total Loans: ${loans.length}  •  Generated: ${currentDate}`, 10, 14);
+
+    const loansPdfData = loans.map((l, idx) => {
+      const totalM = l.totalMonths || 12;
+      const rem = Math.max(0, totalM - l.currentMonth);
+      const remAmt = rem * (l.outsiderMonthlyKisht || l.monthlyKisht);
+      return [
+        idx + 1,
+        `#${l.id}`,
+        l.borrowerName,
+        l.guarantor,
+        l.type.toUpperCase(),
+        fmtCurrency(l.principal),
+        fmtCurrency(l.monthlyKisht),
+        `${l.currentMonth}/${totalM}`,
+        rem > 0 ? `${rem} left` : 'Completed',
+        fmtCurrency(remAmt)
+      ];
+    });
+
+    const totalLoansPrincipal = loans.reduce((s, l) => s + l.principal, 0);
+    const totalLoansKisht = loans.reduce((s, l) => s + l.monthlyKisht, 0);
+    const totalLoansRemBalance = loans.reduce((s, l) => s + (Math.max(0, (l.totalMonths || 12) - l.currentMonth) * (l.outsiderMonthlyKisht || l.monthlyKisht)), 0);
+
+    loansPdfData.push([
+      '',
+      '',
+      'TOTAL',
+      `${loans.length} LOANS`,
+      '-',
+      fmtCurrency(totalLoansPrincipal),
+      fmtCurrency(totalLoansKisht),
+      '-',
+      '-',
+      fmtCurrency(totalLoansRemBalance)
+    ]);
+
+    autoTable(doc, {
+      head: [['#', 'Loan ID', 'Borrower', 'Guarantor', 'Type', 'Principal', 'Monthly Kisht', 'Month', 'Remaining', 'Balance Left']],
+      body: loansPdfData,
+      startY: 23,
+      margin: { left: 10, right: 10 },
+      theme: 'grid',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        fontSize: 7.5,
+        cellPadding: 1.5
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      styles: {
+        fontSize: 6.8,
+        cellPadding: 1.5,
+        valign: 'middle',
+        textColor: [30, 41, 59],
+        lineColor: [226, 232, 240],
+        lineWidth: 0.1
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 7 },
+        1: { halign: 'center', cellWidth: 14 },
+        2: { fontStyle: 'bold', cellWidth: 30 },
+        3: { cellWidth: 26 },
+        4: { halign: 'center', cellWidth: 14 },
+        5: { halign: 'right', cellWidth: 22 },
+        6: { halign: 'right', fontStyle: 'bold', cellWidth: 22 },
+        7: { halign: 'center', cellWidth: 15 },
+        8: { halign: 'center', fontStyle: 'bold', cellWidth: 18 },
+        9: { halign: 'right', fontStyle: 'bold', cellWidth: 22 }
+      },
+      didParseCell: (data) => {
+        if (data.section === 'head') {
+          data.cell.styles.textColor = [255, 255, 255];
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if (data.section === 'body') {
+          if (data.row.index === loansPdfData.length - 1) {
+            data.cell.styles.fontStyle = 'bold';
+            data.cell.styles.fillColor = [15, 23, 42];
+            data.cell.styles.textColor = [56, 189, 248];
+          } else if (data.column.index === 8) {
+            const txt = String(data.cell.raw);
+            if (txt === 'Completed') {
+              data.cell.styles.textColor = [22, 101, 52];
+            } else {
+              data.cell.styles.textColor = [180, 83, 9];
+            }
+          }
+        }
+      }
+    });
+
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(148, 163, 184);
+    doc.text("Official Banking Society Bahikhata Report  •  Page 2: Active Loans & Remaining Kishts", 10, pageHeight - 6);
+  }
 
   const filename = `Banking_Society_Bahikhata_${meetingMonth.replace(/\s+/g, '_')}.pdf`;
   doc.save(filename);
