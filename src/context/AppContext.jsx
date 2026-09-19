@@ -464,8 +464,8 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Submit a loan request by any member
-  const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, principal, note, totalMonths = 12, chargedRate = null }) => {
+  // Submit a loan request by a member
+  const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, principal, note, totalMonths = 12, chargedRate = null, documents = [] }) => {
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
     const kisht = calculateKisht(principal, type, m);
@@ -481,6 +481,7 @@ export function AppProvider({ children }) {
       borrowerPhone,
       borrowerAddress,
       borrowerAadhar: borrowerAadhar || '',
+      documents: documents || [],
       principal,
       totalMonths: m,
       rate: standardRate,
@@ -518,7 +519,8 @@ export function AppProvider({ children }) {
       type: req.type,
       principal: req.principal,
       totalMonths: req.totalMonths || 12,
-      chargedRate: req.chargedRate || null
+      chargedRate: req.chargedRate || null,
+      documents: req.documents || []
     });
 
     const updatedRequests = loanRequests.map(r => r.id === requestId ? { ...r, status: 'approved' } : r);
@@ -539,7 +541,7 @@ export function AppProvider({ children }) {
   };
 
   // Disburse a brand new loan with Audit Trail
-  const disburseLoan = ({ borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, guarantor, type, principal, totalMonths = 12, chargedRate = null }) => {
+  const disburseLoan = ({ borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, guarantor, type, principal, totalMonths = 12, chargedRate = null, documents = [] }) => {
     const p = Number(principal);
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
@@ -560,6 +562,7 @@ export function AppProvider({ children }) {
       borrowerPhone: borrowerPhone || '9800000000',
       borrowerAddress: borrowerAddress || '',
       borrowerAadhar: borrowerAadhar || '',
+      documents: documents || [],
       guarantor: type === 'self' ? borrowerName.toUpperCase() : guarantor.toUpperCase(),
       type,
       principal: p,
@@ -590,6 +593,47 @@ export function AppProvider({ children }) {
     syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
 
     return newLoan;
+  };
+
+  // Attach a security document or form to an existing loan
+  const attachLoanDocument = (loanId, document) => {
+    const updatedLoans = loans.map(l => {
+      if (l.id === loanId) {
+        const existingDocs = l.documents || [];
+        return { ...l, documents: [...existingDocs, document] };
+      }
+      return l;
+    });
+    setLoans(updatedLoans);
+    addLog('DOCUMENT_ATTACHED', `Attached security document "${document.name}" to Loan #${loanId}.`, false);
+    syncToCloud({ loans: updatedLoans });
+  };
+
+  // Remove an attached document from a loan
+  const removeLoanDocument = (loanId, docId) => {
+    const updatedLoans = loans.map(l => {
+      if (l.id === loanId) {
+        const existingDocs = l.documents || [];
+        return { ...l, documents: existingDocs.filter(d => d.id !== docId) };
+      }
+      return l;
+    });
+    setLoans(updatedLoans);
+    addLog('DOCUMENT_REMOVED', `Removed document from Loan #${loanId}.`, false);
+    syncToCloud({ loans: updatedLoans });
+  };
+
+  // Update complete documents list for a loan
+  const updateLoanDocuments = (loanId, documents) => {
+    const updatedLoans = loans.map(l => {
+      if (l.id === loanId) {
+        return { ...l, documents: documents || [] };
+      }
+      return l;
+    });
+    setLoans(updatedLoans);
+    addLog('DOCUMENTS_UPDATED', `Updated security documents for Loan #${loanId}.`, false);
+    syncToCloud({ loans: updatedLoans });
   };
 
   // Reset to initial data
@@ -674,6 +718,9 @@ export function AppProvider({ children }) {
       markAllPaid,
       rollbackAction,
       disburseLoan,
+      attachLoanDocument,
+      removeLoanDocument,
+      updateLoanDocuments,
       resetToFactory
     }}>
       {children}

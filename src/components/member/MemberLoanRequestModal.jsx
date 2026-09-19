@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { calculateKisht, calculateSecurityFee, getStandardRate, formatINR } from '../../utils/loanCalculator';
+import DocumentAttachmentInput from '../common/DocumentAttachmentInput';
 import { Send, Sparkles, AlertTriangle, CheckCircle2, User, Clock, Percent, Zap } from 'lucide-react';
 
 export default function MemberLoanRequestModal({ isOpen, onClose }) {
@@ -12,6 +13,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
   const [borrowerPhone, setBorrowerPhone] = useState('');
   const [borrowerAddress, setBorrowerAddress] = useState('');
   const [borrowerAadhar, setBorrowerAadhar] = useState('');
+  const [documents, setDocuments] = useState([]);
   const [principal, setPrincipal] = useState('50000');
   const [chargedRate, setChargedRate] = useState('16');
   const [note, setNote] = useState('');
@@ -82,7 +84,8 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
         type,
         principal: numPrincipal,
         totalMonths,
-        chargedRate: type === 'outer' ? numChargedRate : standardRate
+        chargedRate: type === 'outer' ? numChargedRate : standardRate,
+        documents
       });
 
       alert(
@@ -101,6 +104,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
         principal: numPrincipal,
         totalMonths,
         chargedRate: type === 'outer' ? numChargedRate : standardRate,
+        documents,
         note
       });
 
@@ -354,6 +358,12 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:outline-none focus:border-slate-700"
             />
           </div>
+
+          {/* Security Document / Signed Form Attachment */}
+          <DocumentAttachmentInput
+            documents={documents}
+            onChange={setDocuments}
+          />
 
           {/* Auto calculations */}
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-1.5 text-slate-300">

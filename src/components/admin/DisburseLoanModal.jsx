@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { calculateKisht, calculateSecurityFee, getStandardRate, formatINR } from '../../utils/loanCalculator';
+import DocumentAttachmentInput from '../common/DocumentAttachmentInput';
 import { X, Sparkles, AlertTriangle, CheckCircle2, Clock, Percent } from 'lucide-react';
 
 export default function DisburseLoanModal({ isOpen, onClose }) {
@@ -11,6 +12,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
   const [borrowerName, setBorrowerName] = useState('');
   const [borrowerPhone, setBorrowerPhone] = useState('');
   const [borrowerAadhar, setBorrowerAadhar] = useState('');
+  const [documents, setDocuments] = useState([]);
   const [guarantor, setGuarantor] = useState(members[0]?.name || 'AVNISH');
   const [principal, setPrincipal] = useState('100000');
   const [chargedRate, setChargedRate] = useState('16');
@@ -82,7 +84,8 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
       type,
       principal: numPrincipal,
       totalMonths,
-      chargedRate: type === 'outer' ? numChargedRate : standardRate
+      chargedRate: type === 'outer' ? numChargedRate : standardRate,
+      documents
     });
 
     if (type === 'outer') {
@@ -339,6 +342,12 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white text-base font-bold focus:border-emerald-500 focus:outline-none"
             />
           </div>
+
+          {/* Security Document / Signed Form Attachment */}
+          <DocumentAttachmentInput
+            documents={documents}
+            onChange={setDocuments}
+          />
 
           {/* Auto-Calculated Summary Card */}
           <div className="bg-slate-950 border border-slate-800 rounded-2xl p-3 space-y-1.5 text-slate-300">

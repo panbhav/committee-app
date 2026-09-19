@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR, getLoanTimeline, getInstallmentSchedule } from '../../utils/loanCalculator';
-import { ShieldCheck, Phone, FileCheck2, AlertCircle, Calendar, Clock, CheckCircle2 } from 'lucide-react';
+import DocumentViewerModal from '../common/DocumentViewerModal';
+import { ShieldCheck, Phone, FileCheck2, AlertCircle, Calendar, Clock, CheckCircle2, Paperclip, Eye } from 'lucide-react';
 
 export default function OuterPassbook() {
   const { loans, currentOuterLoanId, members, t } = useApp();
+  const [viewingDoc, setViewingDoc] = useState(null);
 
   const loan = loans.find(l => l.id === currentOuterLoanId) || loans.find(l => l.type === 'outer');
 
@@ -119,6 +121,31 @@ export default function OuterPassbook() {
         </button>
       </div>
 
+      {/* Attached Security Documents / Signed Form */}
+      {loan.documents && loan.documents.length > 0 && (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-2 shadow-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+              <Paperclip className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Signed Form & Security Documents ({loan.documents.length})</span>
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-2 pt-0.5">
+            {loan.documents.map(d => (
+              <button
+                key={d.id}
+                type="button"
+                onClick={() => setViewingDoc(d)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-medium text-slate-200 hover:border-indigo-500 active:scale-95 transition"
+              >
+                <span className="truncate max-w-[150px]">{d.name}</span>
+                <Eye className="w-3 h-3 text-sky-400" />
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* 12-Month Calendar Schedule */}
       <div className="space-y-2">
         <div className="flex justify-between items-center px-1">
@@ -181,6 +208,10 @@ export default function OuterPassbook() {
           })}
         </div>
       </div>
+
+      {viewingDoc && (
+        <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
+      )}
     </div>
   );
 }

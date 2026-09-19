@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Check, X, Clock, AlertCircle, Sparkles } from 'lucide-react';
+import DocumentViewerModal from '../common/DocumentViewerModal';
+import { Check, X, Clock, AlertCircle, Sparkles, Paperclip, Eye } from 'lucide-react';
 import { formatINR } from '../../utils/loanCalculator';
 
 export default function PendingLoanRequestsModal({ isOpen, onClose }) {
   const { loanRequests, approveLoanRequest, rejectLoanRequest, isSuperAdmin, getMemberLimits, t } = useApp();
+  const [viewingDoc, setViewingDoc] = useState(null);
 
   if (!isOpen) return null;
 
@@ -85,6 +87,29 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                     </div>
                   )}
 
+                  {/* Attached Documents */}
+                  {req.documents && req.documents.length > 0 && (
+                    <div className="space-y-1 bg-slate-950/60 p-2 rounded-xl border border-slate-800/70">
+                      <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                        <Paperclip className="w-3 h-3 text-indigo-400" />
+                        Attached Documents ({req.documents.length}):
+                      </span>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {req.documents.map(d => (
+                          <button
+                            key={d.id}
+                            type="button"
+                            onClick={() => setViewingDoc(d)}
+                            className="flex items-center gap-1 text-[10px] font-semibold bg-indigo-950/70 border border-indigo-700/60 text-indigo-300 px-2 py-0.5 rounded-lg hover:bg-indigo-900/60 active:scale-95 transition"
+                          >
+                            <span className="truncate max-w-[120px]">{d.name}</span>
+                            <Eye className="w-2.5 h-2.5 text-sky-400 ml-0.5" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {isOverLimit && (
                     <div className="text-[10px] text-amber-400 flex items-center gap-1">
                       <AlertCircle className="w-3 h-3" />
@@ -125,6 +150,10 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
           )}
         </div>
       </div>
+
+      {viewingDoc && (
+        <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
+      )}
     </div>
   );
 }

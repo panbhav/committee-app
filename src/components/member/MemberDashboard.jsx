@@ -2,11 +2,15 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatINR, getLoanTimeline } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
-import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown, Calendar } from 'lucide-react';
+import DocumentViewerModal from '../common/DocumentViewerModal';
+import DocumentAttachmentInput from '../common/DocumentAttachmentInput';
+import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown, Calendar, Paperclip, Eye, Plus, X } from 'lucide-react';
 
 
 export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahikhata }) {
-  const { currentUser, getMemberBill, getMemberLimits, payments, loans, members, meetingMonth, t } = useApp();
+  const { currentUser, getMemberBill, getMemberLimits, payments, loans, members, meetingMonth, updateLoanDocuments, t } = useApp();
+  const [viewingDoc, setViewingDoc] = useState(null);
+  const [attachDocLoan, setAttachDocLoan] = useState(null);
 
   const handleExportExcel = () => {
     exportToExcel({ members, loans, payments, meetingMonth, getMemberBill, getMemberLimits });
@@ -238,6 +242,37 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
                         </div>
                       </div>
                     )}
+
+                    {/* Attached Security Documents / Forms */}
+                    <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {l.documents && l.documents.length > 0 ? (
+                          l.documents.map(d => (
+                            <button
+                              key={d.id}
+                              type="button"
+                              onClick={() => setViewingDoc(d)}
+                              className="flex items-center gap-1 text-[10px] font-semibold bg-slate-950 border border-slate-800 text-indigo-300 px-2 py-0.5 rounded-lg hover:border-indigo-500 active:scale-95 transition"
+                            >
+                              <Paperclip className="w-2.5 h-2.5 text-indigo-400" />
+                              <span className="truncate max-w-[110px]">{d.name}</span>
+                              <Eye className="w-2.5 h-2.5 text-sky-400 ml-0.5" />
+                            </button>
+                          ))
+                        ) : (
+                          <span className="text-[10px] text-slate-500 italic">No document attached</span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setAttachDocLoan(l)}
+                        className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5 py-0.5 px-2 rounded-lg bg-indigo-950/40 border border-indigo-900/40 hover:bg-indigo-900/40 transition flex-shrink-0"
+                      >
+                        <Plus className="w-2.5 h-2.5" />
+                        <span>Security / Form</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })
@@ -347,6 +382,52 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
           </button>
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      {viewingDoc && (
+        <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
+      )}
+
+      {/* Attach Document to Existing Loan Modal */}
+      {attachDocLoan && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                  <Paperclip className="w-4 h-4 text-indigo-400" />
+                  Attach Security / Form
+                </h3>
+                <p className="text-[11px] text-slate-400">Loan #{attachDocLoan.id} • {attachDocLoan.borrowerName}</p>
+              </div>
+              <button
+                onClick={() => setAttachDocLoan(null)}
+                className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <DocumentAttachmentInput
+              documents={attachDocLoan.documents || []}
+              onChange={(newDocs) => {
+                updateLoanDocuments(attachDocLoan.id, newDocs);
+                setAttachDocLoan(prev => ({ ...prev, documents: newDocs }));
+              }}
+            />
+
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setAttachDocLoan(null)}
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow transition"
+              >
+                Done (Save Attachments)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
