@@ -31,18 +31,35 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Verify Android SDK
+      - name: Setup Android SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
-          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
-          ls "$ANDROID_HOME/platforms/" || echo "No platforms dir"
-          sdkmanager --list --sdk_root="$ANDROID_HOME" 2>/dev/null | head -30 || true
-
-      - name: Install Required Android SDK Components
-        run: |
-          yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses || true
-          sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-36" "build-tools;36.0.0" || \
-          sdkmanager --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.1"
+          echo "=== ANDROID_HOME: $ANDROID_HOME ==="
+          
+          # Find sdkmanager location
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -f "$SDKMANAGER" ]; then
+            echo "sdkmanager not at cmdline-tools/latest, searching..."
+            SDKMANAGER=$(find "$ANDROID_HOME" -name "sdkmanager" -type f 2>/dev/null | head -1)
+          fi
+          echo "=== Using sdkmanager: $SDKMANAGER ==="
+          
+          # Accept licenses  
+          yes | "$SDKMANAGER" --licenses 2>&1 || true
+          
+          # Try installing platforms - with verbose output
+          echo "=== Installing Android SDK platform 36 ==="
+          "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" 2>&1 || {
+            echo "=== API 36 failed, trying API 35 ==="
+            "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.1" 2>&1 || {
+              echo "=== API 35 failed, trying API 34 ==="
+              "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" 2>&1
+            }
+          }
+          
+          echo "=== Installed platforms: ==="
+          ls -la "$ANDROID_HOME/platforms/" || true
+          echo "=== Installed build-tools: ==="
+          ls -la "$ANDROID_HOME/build-tools/" || true
 
       - name: Sync Capacitor Android
         run: npx cap sync android
