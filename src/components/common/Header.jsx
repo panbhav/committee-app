@@ -17,7 +17,8 @@ export default function Header() {
     auditLogs,
     lang,
     t,
-    toggleLanguage
+    toggleLanguage,
+    cloudSyncStatus
   } = useApp();
 
   const [showSwitchModal, setShowSwitchModal] = useState(false);
@@ -38,9 +39,22 @@ export default function Header() {
               <h1 className="text-sm font-bold text-white tracking-tight leading-tight">
                 {t.appTitle}
               </h1>
-              <p className="text-[10px] font-medium text-slate-400">
-                {meetingMonth}
-              </p>
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-400">
+                <span>{meetingMonth}</span>
+                <span className="text-slate-600">•</span>
+                <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+                  cloudSyncStatus === 'connected'
+                    ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/40'
+                    : cloudSyncStatus === 'connecting'
+                    ? 'text-amber-400 bg-amber-950/60 border border-amber-800/40'
+                    : 'text-slate-400 bg-slate-800/60 border border-slate-700/40'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${
+                    cloudSyncStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                  }`} />
+                  {cloudSyncStatus === 'connected' ? 'Live Cloud' : cloudSyncStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+                </span>
+              </div>
             </div>
           </div>
 

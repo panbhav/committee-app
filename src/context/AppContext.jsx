@@ -2,10 +2,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { INITIAL_MEMBERS, INITIAL_LOANS } from '../data/initialData';
 import { translations } from '../data/translations';
 import { calculateKisht, calculateSecurityFee } from '../utils/loanCalculator';
+import { db, doc, setDoc, onSnapshot } from '../services/firebase';
 
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
+  const [cloudSyncStatus, setCloudSyncStatus] = useState('connecting'); // 'connected' | 'offline' | 'connecting'
   // Language: 'hi' (Hindi) or 'en' (English)
   const [lang, setLang] = useState(() => {
     return localStorage.getItem('comm_lang') || 'hi'; // Default Hindi for user-friendliness!
@@ -174,6 +176,56 @@ export function AppProvider({ children }) {
     localStorage.setItem('comm_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
+  // Push state updates to Firebase Firestore
+  const syncToCloud = async (patch) => {
+    try {
+      const docRef = doc(db, 'committee', 'global_state');
+      await setDoc(docRef, patch, { merge: true });
+    } catch (err) {
+      console.warn('Sync to cloud warning:', err);
+    }
+  };
+
+  // Real-time Cloud Firestore Listener (Live Multi-Device Sync)
+  useEffect(() => {
+    const docRef = doc(db, 'committee', 'global_state');
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const d = docSnap.data();
+        if (d.members && Array.isArray(d.members)) setMembers(d.members);
+        if (d.loans && Array.isArray(d.loans)) setLoans(d.loans);
+        if (d.payments && typeof d.payments === 'object') setPayments(d.payments);
+        if (d.auditLogs && Array.isArray(d.auditLogs)) setAuditLogs(d.auditLogs);
+        if (d.loanRequests && Array.isArray(d.loanRequests)) setLoanRequests(d.loanRequests);
+        if (d.monthlyUnit !== undefined) setMonthlyUnit(d.monthlyUnit);
+        if (d.availableCashFund !== undefined) setAvailableCashFund(d.availableCashFund);
+        if (d.meetingMonth) setMeetingMonth(d.meetingMonth);
+        if (d.meetingDate) setMeetingDate(d.meetingDate);
+        setCloudSyncStatus('connected');
+      } else {
+        // First-time seed of initial September committee data into cloud
+        const initialSeed = {
+          members: INITIAL_MEMBERS,
+          loans: INITIAL_LOANS,
+          payments,
+          auditLogs,
+          loanRequests,
+          monthlyUnit,
+          availableCashFund,
+          meetingMonth,
+          meetingDate
+        };
+        setDoc(docRef, initialSeed).catch(() => {});
+        setCloudSyncStatus('connected');
+      }
+    }, (err) => {
+      console.warn('Firestore real-time listener error:', err);
+      setCloudSyncStatus('offline');
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // Helper to add an audit log entry
   const addLog = (action, details, canRollback = false, rollbackData = null) => {
     const newEntry = {
@@ -269,8 +321,8 @@ export function AppProvider({ children }) {
     const timestampNow = getFormattedTimestamp();
     const actorName = currentUser ? currentUser.name : 'ADMIN';
 
-    setPayments(prev => ({
-      ...prev,
+    const updatedPayments = {
+      ...payments,
       [memberId]: {
         ...current,
         status: newStatus,
@@ -279,23 +331,24 @@ export function AppProvider({ children }) {
         paidAt: newStatus === 'paid' ? timestampNow : null,
         paidBy: newStatus === 'paid' ? actorName : null
       }
-    }));
+    };
+    setPayments(updatedPayments);
 
-    if (newStatus === 'paid') {
-      addLog(
-        'MARKED_PAID',
-        `Marked ${member.name} as fully PAID (₹${bill.totalDue.toLocaleString()}).`,
-        true,
-        { type: 'payment', memberId, previousState: current }
-      );
-    } else {
-      addLog(
-        'REVERTED_PAID',
-        `Reverted ${member.name} back to PENDING.`,
-        true,
-        { type: 'payment', memberId, previousState: current }
-      );
-    }
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: timestampNow,
+      actor: actorName,
+      action: newStatus === 'paid' ? 'MARKED_PAID' : 'REVERTED_PAID',
+      details: newStatus === 'paid'
+        ? `Marked ${member.name} as fully PAID (₹${bill.totalDue.toLocaleString()}).`
+        : `Reverted ${member.name} back to PENDING.`,
+      canRollback: true,
+      rollbackData: { type: 'payment', memberId, previousState: current }
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({ payments: updatedPayments, auditLogs: updatedLogs });
   };
 
   // Record custom payment (partial / short) with Audit Trail
@@ -306,8 +359,8 @@ export function AppProvider({ children }) {
     const timestampNow = getFormattedTimestamp();
     const actorName = currentUser ? currentUser.name : 'ADMIN';
 
-    setPayments(prev => ({
-      ...prev,
+    const updatedPayments = {
+      ...payments,
       [memberId]: {
         status: shortAmount > 0 ? 'short' : 'paid',
         deposit: Number(depositAmount),
@@ -316,14 +369,22 @@ export function AppProvider({ children }) {
         paidAt: timestampNow,
         paidBy: actorName
       }
-    }));
+    };
+    setPayments(updatedPayments);
 
-    addLog(
-      'RECORDED_PARTIAL',
-      `Updated ${member.name}: Deposit ₹${depositAmount.toLocaleString()}${shortAmount > 0 ? `, Short ₹${shortAmount.toLocaleString()}` : ''}${extraAmount > 0 ? `, Extra ₹${extraAmount.toLocaleString()}` : ''}.`,
-      true,
-      { type: 'payment', memberId, previousState: current }
-    );
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: timestampNow,
+      actor: actorName,
+      action: 'RECORDED_PARTIAL',
+      details: `Updated ${member.name}: Deposit ₹${Number(depositAmount).toLocaleString()}${shortAmount > 0 ? `, Short ₹${shortAmount.toLocaleString()}` : ''}${extraAmount > 0 ? `, Extra ₹${extraAmount.toLocaleString()}` : ''}.`,
+      canRollback: true,
+      rollbackData: { type: 'payment', memberId, previousState: current }
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({ payments: updatedPayments, auditLogs: updatedLogs });
   };
 
   // One-tap mark all paid with Audit Trail
@@ -345,12 +406,19 @@ export function AppProvider({ children }) {
     });
     setPayments(newPayments);
 
-    addLog(
-      'MARKED_ALL_PAID',
-      'One-tap: Marked all 15 members as fully paid for the meeting.',
-      true,
-      { type: 'all_payments', previousPayments }
-    );
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: timestampNow,
+      actor: actorName,
+      action: 'MARKED_ALL_PAID',
+      details: 'One-tap: Marked all 15 members as fully paid for the meeting.',
+      canRollback: true,
+      rollbackData: { type: 'all_payments', previousPayments }
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({ payments: newPayments, auditLogs: updatedLogs });
   };
 
   // Rollback a past action from log
@@ -450,14 +518,22 @@ export function AppProvider({ children }) {
       securityFee: security
     };
 
-    setLoans(prev => [newLoan, ...prev]);
+    const updatedLoans = [newLoan, ...loans];
+    setLoans(updatedLoans);
 
-    addLog(
-      'LOAN_DISBURSED',
-      `Disbursed new ${type.toUpperCase()} loan #${nextId} to ${newLoan.borrowerName} for ₹${p.toLocaleString()} (Guarantor: ${newLoan.guarantor}, Kisht: ₹${kisht.toLocaleString()}/mo).`,
-      true,
-      { type: 'new_loan', loanId: nextId }
-    );
+    const logEntry = {
+      id: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+      timestamp: getFormattedTimestamp(),
+      actor: currentUser ? currentUser.name : 'ADMIN',
+      action: 'LOAN_DISBURSED',
+      details: `Disbursed new ${type.toUpperCase()} loan #${nextId} to ${newLoan.borrowerName} for ₹${p.toLocaleString()} (Guarantor: ${newLoan.guarantor}, Kisht: ₹${kisht.toLocaleString()}/mo).`,
+      canRollback: true,
+      rollbackData: { type: 'new_loan', loanId: nextId }
+    };
+    const updatedLogs = [logEntry, ...auditLogs];
+    setAuditLogs(updatedLogs);
+
+    syncToCloud({ loans: updatedLoans, auditLogs: updatedLogs });
 
     return newLoan;
   };
@@ -474,22 +550,33 @@ export function AppProvider({ children }) {
       initial[m.id] = { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
     });
     setPayments(initial);
-    setAuditLogs([
+    const resetLogs = [
       {
         id: 'init-reset',
         timestamp: new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
-        actor: 'DEVELOPER',
+        actor: 'ADMIN',
         action: 'FACTORY_RESET',
         details: 'Reset application data back to default September state.',
         canRollback: false
       }
-    ]);
+    ];
+    setAuditLogs(resetLogs);
+
+    syncToCloud({
+      members: INITIAL_MEMBERS,
+      loans: INITIAL_LOANS,
+      monthlyUnit: 1000,
+      meetingMonth: 'September 2026',
+      payments: initial,
+      auditLogs: resetLogs
+    });
   };
 
   const isSuperAdmin = currentUser && (currentUser.name === 'NARENDRA' || currentUser.name === 'HARISH');
 
   return (
     <AppContext.Provider value={{
+      cloudSyncStatus,
       lang,
       language: lang,
       setLang,
