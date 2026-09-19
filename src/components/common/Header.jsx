@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Shield, UserCheck, ChevronDown, RefreshCw, History } from 'lucide-react';
+import { Shield, UserCheck, ChevronDown, RefreshCw, History, LogOut } from 'lucide-react';
 import ActivityLogsModal from './ActivityLogsModal';
 
 export default function Header() {
@@ -54,39 +54,51 @@ export default function Header() {
               {lang === 'hi' ? '🇮🇳 हिंदी' : '🇬🇧 ENG'}
             </button>
 
-            {/* Logs Button */}
-            <button
-              onClick={() => setShowLogsModal(true)}
-              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded-full text-xs font-semibold text-slate-200 transition"
-              title="View Complete Activity Logs"
-            >
-              <History className="w-3.5 h-3.5 text-indigo-400" />
-              <span className="text-[10px]">{auditLogs.length}</span>
-            </button>
+            {/* If Member / Admin: Show Logs and Switcher. If Outsider: Show Logout */}
+            {currentUser ? (
+              <>
+                {/* Logs Button */}
+                <button
+                  onClick={() => setShowLogsModal(true)}
+                  className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded-full text-xs font-semibold text-slate-200 transition"
+                  title="View Complete Activity Logs"
+                >
+                  <History className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[10px]">{auditLogs.length}</span>
+                </button>
 
-            {/* Active User Switcher Pill */}
-            <button
-              onClick={() => setShowSwitchModal(true)}
-              className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded-full transition-all text-xs font-semibold text-slate-200"
-            >
-
-              {isSuperAdmin ? (
-                <span className="flex items-center gap-1 text-amber-400 font-bold">
-                  <Shield className="w-3.5 h-3.5" />
-                  {currentUser?.name || 'Admin'}
-                </span>
-              ) : currentUser ? (
-                <span className="flex items-center gap-1 text-emerald-400">
-                  <UserCheck className="w-3.5 h-3.5" />
-                  {currentUser.name}
-                </span>
-              ) : (
-                <span className="text-sky-400">
-                  Outsider View
-                </span>
-              )}
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
-            </button>
+                {/* Active User Switcher Pill */}
+                <button
+                  onClick={() => setShowSwitchModal(true)}
+                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-2 py-1 rounded-full transition-all text-xs font-semibold text-slate-200"
+                >
+                  {isSuperAdmin ? (
+                    <span className="flex items-center gap-1 text-amber-400 font-bold">
+                      <Shield className="w-3.5 h-3.5" />
+                      {currentUser?.name || 'Admin'}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-emerald-400">
+                      <UserCheck className="w-3.5 h-3.5" />
+                      {currentUser.name}
+                    </span>
+                  )}
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  localStorage.removeItem('comm_logged_in');
+                  window.location.reload();
+                }}
+                className="flex items-center gap-1 bg-red-950/50 hover:bg-red-900/50 border border-red-800/60 text-red-300 px-2.5 py-1 rounded-full text-xs font-semibold transition"
+                title="Logout of Passbook"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Logout</span>
+              </button>
+            )}
           </div>
         </div>
       </header>
