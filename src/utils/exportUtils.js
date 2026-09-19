@@ -541,44 +541,31 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
  * Export clean, branded PDF summary report
  */
 export function exportToPDF({ members, loans, payments, meetingMonth, getMemberBill }) {
-  const doc = new jsPDF();
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const currentDate = new Date().toLocaleDateString('en-IN', {
     day: 'numeric',
     month: 'short',
     year: 'numeric'
   });
 
-  // Top Header Banner
-  doc.setFillColor(15, 118, 110); // Emerald 700
-  doc.rect(0, 0, 210, 26, 'F');
+  // Universal currency formatting (prevents Helvetica font glyph corruption in PDF)
+  const fmtCurrency = (n) => `Rs. ${(n || 0).toLocaleString('en-IN')}`;
 
-  doc.setFontSize(14);
+  // Top Header Banner
+  doc.setFillColor(15, 118, 110); // Teal 700
+  doc.rect(0, 0, 210, 24, 'F');
+
+  doc.setFontSize(13);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text("COMMITTEE MONTHLY BAHIKHATA & COLLECTION SHEET", 14, 12);
+  doc.text("BANKING SOCIETY - MONTHLY BAHIKHATA & COLLECTION", 10, 11);
 
-  doc.setFontSize(9);
+  doc.setFontSize(8.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(204, 251, 241);
-  doc.text(`Meeting: ${meetingMonth}   |   15 Members   |   Generated: ${currentDate}`, 14, 20);
+  doc.text(`Meeting: ${meetingMonth}   |   15 Members   |   Generated: ${currentDate}`, 10, 18);
 
-  // Table Data
-  const tableData = members.map((m, idx) => {
-    const bill = getMemberBill(m.name);
-    const p = payments[m.id] || { status: 'pending', deposit: 0, shortAmount: 0 };
-    return [
-      idx + 1,
-      m.name,
-      `₹${bill.outerTotal.toLocaleString()}`,
-      `₹${bill.selfTotal.toLocaleString()}`,
-      `₹${bill.monthlyUnit.toLocaleString()}`,
-      `₹${bill.totalDue.toLocaleString()}`,
-      p.status === 'paid' ? 'PAID' : (p.status === 'short' ? `SHORT (₹${p.shortAmount})` : 'PENDING'),
-      `₹${(p.deposit || 0).toLocaleString()}`
-    ];
-  });
-
-  // Calculate Totals row
+  // Summary Metrics Banner Row (y = 27 to 37)
   const totalOuter = members.reduce((s, m) => s + getMemberBill(m.name).outerTotal, 0);
   const totalSelf = members.reduce((s, m) => s + getMemberBill(m.name).selfTotal, 0);
   const totalMonthly = members.reduce((s, m) => s + getMemberBill(m.name).monthlyUnit, 0);
@@ -588,63 +575,122 @@ export function exportToPDF({ members, loans, payments, meetingMonth, getMemberB
     return s + (p && p.deposit ? p.deposit : 0);
   }, 0);
 
+  // 4 Micro Summary Cards
+  const cardY = 27;
+  const cardW = 46;
+  const cardH = 11;
+
+  const drawCard = (x, title, value, valColor) => {
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(x, cardY, cardW, cardH, 1.5, 1.5, 'FD');
+
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(100, 116, 139);
+    doc.text(title, x + 3, cardY + 4);
+
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(valColor[0], valColor[1], valColor[2]);
+    doc.text(value, x + 3, cardY + 8.5);
+  };
+
+  drawCard(10, "TOTAL EXPECTED DUE", fmtCurrency(totalDue), [15, 118, 110]);
+  drawCard(58, "OUTER KISHTS", fmtCurrency(totalOuter), [180, 83, 9]);
+  drawCard(106, "SELF KISHT", fmtCurrency(totalSelf), [22, 101, 52]);
+  drawCard(154, "MONTHLY UNITS", fmtCurrency(totalMonthly), [30, 41, 59]);
+
+  // Table Data
+  const tableData = members.map((m, idx) => {
+    const bill = getMemberBill(m.name);
+    const p = payments[m.id] || { status: 'pending', deposit: 0, shortAmount: 0 };
+    return [
+      idx + 1,
+      m.name,
+      fmtCurrency(bill.outerTotal),
+      fmtCurrency(bill.selfTotal),
+      fmtCurrency(bill.monthlyUnit),
+      fmtCurrency(bill.totalDue),
+      p.status === 'paid' ? 'PAID' : (p.status === 'short' ? `SHORT (${p.shortAmount})` : 'PENDING'),
+      fmtCurrency(p.deposit || 0)
+    ];
+  });
+
   tableData.push([
     '',
     'TOTAL',
-    `₹${totalOuter.toLocaleString()}`,
-    `₹${totalSelf.toLocaleString()}`,
-    `₹${totalMonthly.toLocaleString()}`,
-    `₹${totalDue.toLocaleString()}`,
+    fmtCurrency(totalOuter),
+    fmtCurrency(totalSelf),
+    fmtCurrency(totalMonthly),
+    fmtCurrency(totalDue),
     '-',
-    `₹${totalDeposit.toLocaleString()}`
+    fmtCurrency(totalDeposit)
   ]);
 
   autoTable(doc, {
     head: [['#', 'Member Name', 'Outer Kishts', 'Self Kisht', 'Monthly Unit', 'Total Due', 'Status', 'Deposit']],
     body: tableData,
-    startY: 32,
+    startY: 42,
+    margin: { left: 10, right: 10 },
     theme: 'grid',
     headStyles: {
       fillColor: [15, 118, 110],
-      textColor: 255,
+      textColor: [255, 255, 255],
       fontStyle: 'bold',
       halign: 'center',
-      fontSize: 8.5
+      fontSize: 8,
+      cellPadding: 2
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252]
     },
     styles: {
-      fontSize: 8,
-      cellPadding: 2.5,
-      valign: 'middle'
+      fontSize: 7.5,
+      cellPadding: 2,
+      valign: 'middle',
+      textColor: [30, 41, 59],
+      lineColor: [226, 232, 240],
+      lineWidth: 0.1
     },
     columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
+      0: { halign: 'center', cellWidth: 8 },
       1: { fontStyle: 'bold', cellWidth: 32 },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right', fontStyle: 'bold' },
-      6: { halign: 'center' },
-      7: { halign: 'right', fontStyle: 'bold' }
+      2: { halign: 'right', cellWidth: 26 },
+      3: { halign: 'right', cellWidth: 24 },
+      4: { halign: 'right', cellWidth: 20 },
+      5: { halign: 'right', fontStyle: 'bold', cellWidth: 27 },
+      6: { halign: 'center', cellWidth: 25 },
+      7: { halign: 'right', fontStyle: 'bold', cellWidth: 28 }
     },
     didParseCell: (data) => {
-      // Highlight TOTAL row
-      if (data.row.index === tableData.length - 1) {
+      // Prevent header styles from leaking to column colors
+      if (data.section === 'head') {
+        data.cell.styles.textColor = [255, 255, 255];
         data.cell.styles.fontStyle = 'bold';
-        data.cell.styles.fillColor = [15, 23, 42]; // Slate 900
-        data.cell.styles.textColor = [56, 189, 248]; // Sky 400
       }
-      // Status badges
-      if (data.column.index === 6 && data.row.index < tableData.length - 1) {
-        const text = String(data.cell.raw);
-        if (text === 'PAID') {
-          data.cell.styles.textColor = [22, 101, 52];
+
+      // Body styling
+      if (data.section === 'body') {
+        // Highlight TOTAL row
+        if (data.row.index === tableData.length - 1) {
           data.cell.styles.fontStyle = 'bold';
-        } else if (text.includes('SHORT')) {
-          data.cell.styles.textColor = [185, 28, 28];
-          data.cell.styles.fontStyle = 'bold';
-        } else {
-          data.cell.styles.textColor = [180, 83, 9];
-          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fillColor = [15, 23, 42]; // Slate 900
+          data.cell.styles.textColor = [56, 189, 248]; // Sky 400
+          data.cell.styles.fontSize = 8;
+        } else if (data.column.index === 6) {
+          // Status badges
+          const text = String(data.cell.raw);
+          if (text === 'PAID') {
+            data.cell.styles.textColor = [22, 101, 52]; // Dark Green
+            data.cell.styles.fontStyle = 'bold';
+          } else if (text.includes('SHORT')) {
+            data.cell.styles.textColor = [185, 28, 28]; // Red
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            data.cell.styles.textColor = [194, 65, 12]; // Amber
+            data.cell.styles.fontStyle = 'bold';
+          }
         }
       }
     }
@@ -652,10 +698,11 @@ export function exportToPDF({ members, loans, payments, meetingMonth, getMemberB
 
   // Footer note
   const pageHeight = doc.internal.pageSize.height;
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "normal");
   doc.setTextColor(148, 163, 184);
-  doc.text("Official Committee Bahikhata Report  •  100% Peer Verified & Tamper-evident", 14, pageHeight - 8);
+  doc.text("Official Banking Society Bahikhata Report  •  100% Peer Verified & Tamper-evident", 10, pageHeight - 6);
 
-  const filename = `Committee_Report_${meetingMonth.replace(/\s+/g, '_')}.pdf`;
+  const filename = `Banking_Society_Bahikhata_${meetingMonth.replace(/\s+/g, '_')}.pdf`;
   doc.save(filename);
 }
