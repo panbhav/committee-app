@@ -52,6 +52,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
   const limits = getMemberLimits(targetMemberName);
   const availableLimit = type === 'self' ? limits.selfLeft : limits.outerLeft;
   const isLimitExceeded = numPrincipal > availableLimit;
+  const isOuterMaxExceeded = type === 'outer' && numPrincipal > 100000;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -63,6 +64,10 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
       const cleanAadhar = borrowerAadhar.replace(/\D/g, '');
       if (cleanAadhar.length !== 12) {
         alert('Please enter a valid 12-digit Aadhaar number for the outsider borrower (12 अंक आधार नंबर अनिवार्य है)।');
+        return;
+      }
+      if (numPrincipal > 100000) {
+        alert(t.outerCapExceeded || 'Outsider ke liye maximum loan amount ₹1,00,000 (1 Lakh) hi ho sakta hai.');
         return;
       }
     }
@@ -124,7 +129,10 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
           <div className="grid grid-cols-2 gap-1.5 bg-slate-950 p-1 rounded-2xl border border-slate-800">
             <button
               type="button"
-              onClick={() => setType('outer')}
+              onClick={() => {
+                setType('outer');
+                if (Number(principal) > 100000) setPrincipal('100000');
+              }}
               className={`py-2 rounded-xl font-bold transition text-xs ${
                 type === 'outer'
                   ? 'bg-amber-600 text-white shadow-md'
@@ -330,17 +338,29 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
 
           {/* Principal Amount */}
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">
-              {t.principalLabel}
-            </label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-slate-300 font-semibold">{t.principalLabel}</label>
+              {type === 'outer' && (
+                <span className="text-[10px] text-amber-400 font-bold">
+                  {t.maxOuterLoanCap}
+                </span>
+              )}
+            </div>
             <input
               type="number"
               step="5000"
+              max={type === 'outer' ? 100000 : undefined}
               required
               value={principal}
               onChange={(e) => setPrincipal(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white text-base font-bold focus:border-emerald-500 focus:outline-none"
+              className={`w-full bg-slate-950 border ${isOuterMaxExceeded ? 'border-red-500' : 'border-slate-800'} rounded-xl p-2.5 text-white text-base font-bold focus:border-emerald-500 focus:outline-none`}
             />
+            {isOuterMaxExceeded && (
+              <p className="text-[11px] text-red-400 font-bold mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{t.outerCapExceeded}</span>
+              </p>
+            )}
           </div>
 
           {/* Security Document / Signed Form Attachment */}
@@ -401,7 +421,8 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-lg shadow-emerald-900/40 active:scale-98 transition"
+              disabled={isOuterMaxExceeded}
+              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold shadow-lg shadow-emerald-900/40 active:scale-98 transition"
             >
               {t.disburseSubmitBtn}
             </button>

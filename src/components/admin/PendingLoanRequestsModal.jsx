@@ -117,6 +117,13 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                     </div>
                   )}
 
+                  {req.type === 'outer' && req.principal > 100000 && (
+                    <div className="text-[10px] text-red-400 font-bold flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>{t.outerCapExceeded}</span>
+                    </div>
+                  )}
+
                   {/* Actions for Super Admin */}
                   {isSuperAdmin ? (
                     <div className="pt-2 border-t border-slate-800 flex gap-2">
@@ -128,12 +135,13 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
                         <span>{t.rejectLoan}</span>
                       </button>
                       <button
+                        disabled={req.type === 'outer' && req.principal > 100000}
                         onClick={() => {
                           if (confirm(`Approve ₹${req.principal.toLocaleString()} loan for ${req.borrowerName}?`)) {
                             approveLoanRequest(req.id);
                           }
                         }}
-                        className="flex-1 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-1 text-[11px] shadow"
+                        className="flex-1 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold flex items-center justify-center gap-1 text-[11px] shadow"
                       >
                         <Check className="w-3 h-3" />
                         <span>{t.approveLoan}</span>

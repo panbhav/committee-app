@@ -583,12 +583,16 @@ export function AppProvider({ children }) {
 
   // Submit a loan request by a member
   const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, principal, note, totalMonths = 12, chargedRate = null, documents = [] }) => {
+    let finalPrincipal = Number(principal);
+    if (type === 'outer' && finalPrincipal > 100000) {
+      finalPrincipal = 100000;
+    }
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
-    const kisht = calculateKisht(principal, type, m);
-    const security = calculateSecurityFee(principal, type);
+    const kisht = calculateKisht(finalPrincipal, type, m);
+    const security = calculateSecurityFee(finalPrincipal, type);
     const effectiveChargedRate = (type === 'outer' && chargedRate && Number(chargedRate) > 0) ? Number(chargedRate) : standardRate;
-    const outsiderKisht = (type === 'outer') ? calculateKisht(principal, type, m, effectiveChargedRate) : kisht;
+    const outsiderKisht = (type === 'outer') ? calculateKisht(finalPrincipal, type, m, effectiveChargedRate) : kisht;
 
     const newRequest = {
       id: 'req-' + Date.now(),
@@ -599,7 +603,7 @@ export function AppProvider({ children }) {
       borrowerAddress,
       borrowerAadhar: borrowerAadhar || '',
       documents: documents || [],
-      principal,
+      principal: finalPrincipal,
       totalMonths: m,
       rate: standardRate,
       chargedRate: effectiveChargedRate,
@@ -615,7 +619,7 @@ export function AppProvider({ children }) {
     setLoanRequests(updatedRequests);
     addLog(
       'LOAN_REQUESTED',
-      `${currentUser.name} requested new ${type.toUpperCase()} loan for ${borrowerName} (₹${principal.toLocaleString()}, ${m} Months).`,
+      `${currentUser.name} requested new ${type.toUpperCase()} loan for ${borrowerName} (₹${finalPrincipal.toLocaleString()}, ${m} Months).`,
       false
     );
     syncToCloud({ loanRequests: updatedRequests });
@@ -659,7 +663,8 @@ export function AppProvider({ children }) {
 
   // Disburse a brand new loan with Audit Trail
   const disburseLoan = ({ borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, guarantor, type, principal, totalMonths = 12, chargedRate = null, documents = [] }) => {
-    const p = Number(principal);
+    const rawP = Number(principal);
+    const p = (type === 'outer' && rawP > 100000) ? 100000 : rawP;
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
     const kisht = calculateKisht(p, type, m);

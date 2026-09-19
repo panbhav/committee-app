@@ -52,6 +52,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
   const limits = getMemberLimits(currentUser.name);
   const availableLimit = type === 'self' ? limits.selfLeft : limits.outerLeft;
   const isLimitExceeded = numPrincipal > availableLimit;
+  const isOuterMaxExceeded = type === 'outer' && numPrincipal > 100000;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -63,6 +64,10 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
       const cleanAadhar = borrowerAadhar.replace(/\D/g, '');
       if (cleanAadhar.length !== 12) {
         alert('Kripya outsider borrower ka sahi 12-digit Aadhaar number darj karein (12 अंक आधार नंबर अनिवार्य है)।');
+        return;
+      }
+      if (numPrincipal > 100000) {
+        alert(t.outerCapExceeded || 'Outsider ke liye maximum loan amount ₹1,00,000 (1 Lakh) hi ho sakta hai.');
         return;
       }
     }
@@ -142,7 +147,10 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
           <div className="grid grid-cols-2 gap-1.5 bg-slate-950 p-1 rounded-2xl border border-slate-800">
             <button
               type="button"
-              onClick={() => setType('outer')}
+              onClick={() => {
+                setType('outer');
+                if (Number(principal) > 100000) setPrincipal('100000');
+              }}
               className={`py-2 rounded-xl font-bold transition ${
                 type === 'outer' ? 'bg-amber-600 text-white shadow' : 'text-slate-400'
               }`}
@@ -331,18 +339,32 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="text-slate-300 font-semibold">Loan Amount (₹):</label>
-              <span className="text-[10px] text-slate-400">
-                Bachi limit: <b className="text-emerald-400">{formatINR(availableLimit)}</b>
-              </span>
+              <div className="text-right">
+                {type === 'outer' && (
+                  <span className="text-[10px] text-amber-400 font-bold block">
+                    {t.maxOuterLoanCap}
+                  </span>
+                )}
+                <span className="text-[10px] text-slate-400">
+                  Bachi limit: <b className="text-emerald-400">{formatINR(availableLimit)}</b>
+                </span>
+              </div>
             </div>
             <input
               type="number"
               step="5000"
+              max={type === 'outer' ? 100000 : undefined}
               required
               value={principal}
               onChange={(e) => setPrincipal(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-bold text-base focus:outline-none focus:border-emerald-500"
+              className={`w-full bg-slate-950 border ${isOuterMaxExceeded ? 'border-red-500' : 'border-slate-800'} rounded-xl p-2.5 text-white font-bold text-base focus:outline-none focus:border-emerald-500`}
             />
+            {isOuterMaxExceeded && (
+              <p className="text-[11px] text-red-400 font-bold mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{t.outerCapExceeded}</span>
+              </p>
+            )}
           </div>
 
           {/* Reason / Note */}
@@ -435,7 +457,8 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center justify-center gap-1.5 shadow active:scale-98 transition"
+              disabled={isLimitExceeded || isOuterMaxExceeded}
+              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold flex items-center justify-center gap-1.5 shadow active:scale-98 transition"
             >
               {isSuperAdmin && instantDisburse ? <Zap className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
               <span>{isSuperAdmin && instantDisburse ? 'Disburse Now' : 'Submit Request'}</span>
