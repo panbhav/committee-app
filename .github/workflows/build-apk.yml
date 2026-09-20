@@ -31,7 +31,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         run: |
@@ -41,7 +41,7 @@ jobs:
           fi
           yes | "$SDKMANAGER" --licenses 2>&1 || true
           "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0" 2>&1 || \
-          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.1" 2>&1 || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" 2>&1 || true
 
       - name: Copy Web Assets to Android
         run: |
@@ -127,8 +127,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
-          tag_name: latest
-          name: "Banking Society APK (Latest Release)"
+          tag_name: v1.0.${{ github.run_number }}
+          name: "Banking Society APK v1.0.${{ github.run_number }}"
+          make_latest: true
           body: |
             ### 📱 Banking Society Mobile App (Android APK)
             Latest standalone Android APK with all current features, verified calculations, and clean financial audit logs.
