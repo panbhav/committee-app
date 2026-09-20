@@ -168,27 +168,33 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
 
       {/* Loans Sub-tabs: Outer vs Self */}
       <div className="space-y-2.5">
-        <div className="flex justify-between items-center px-1">
-          <div className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
+        <div className="flex items-center justify-between gap-2">
+          <div className="grid grid-cols-2 gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 flex-1 min-w-0">
             <button
               onClick={() => setActiveSubTab('outer')}
-              className={`px-3 py-1 rounded-lg font-bold transition ${activeSubTab === 'outer' ? 'bg-amber-600 text-white shadow' : 'text-slate-400'}`}
+              className={`py-1.5 px-2 rounded-lg font-bold text-xs text-center transition truncate ${
+                activeSubTab === 'outer' ? 'bg-amber-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
             >
-              Guaranteed Outsiders ({bill.outerLoans.length})
+              Outsiders ({bill.outerLoans.length})
             </button>
             <button
               onClick={() => setActiveSubTab('self')}
-              className={`px-3 py-1 rounded-lg font-bold transition ${activeSubTab === 'self' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400'}`}
+              className={`py-1.5 px-2 rounded-lg font-bold text-xs text-center transition truncate ${
+                activeSubTab === 'self' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-slate-200'
+              }`}
             >
-              My Self Loans ({bill.selfLoans.length})
+              Self ({bill.selfLoans.length})
             </button>
           </div>
 
           <button
             onClick={onOpenNewLoan}
-            className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300"
+            className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 px-2.5 rounded-xl flex items-center gap-1 shadow shrink-0 active:scale-95 transition"
+            title="Request New Loan"
           >
-            + Request Loan
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span>Request</span>
           </button>
         </div>
 

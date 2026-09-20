@@ -49,9 +49,9 @@ export default function App() {
   // If viewing as an Outsider (currentUser is null, but currentOuterLoanId is set)
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col max-w-md mx-auto relative border-x border-slate-900 shadow-2xl">
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col w-full max-w-md mx-auto relative border-x border-slate-900 shadow-2xl overflow-x-hidden">
         <Header />
-        <main className="flex-1 p-4">
+        <main className="flex-1 p-3 sm:p-4 overflow-x-hidden">
           <OuterPassbook />
         </main>
       </div>
@@ -72,10 +72,10 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col max-w-md mx-auto relative border-x border-slate-900 shadow-2xl">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col w-full max-w-md mx-auto relative border-x border-slate-900 shadow-2xl overflow-x-hidden">
       <Header />
 
-      <main className="flex-1 p-4 overflow-y-auto">
+      <main className="flex-1 p-3 sm:p-4 overflow-y-auto overflow-x-hidden">
         {/* TAB 1: HOME / MEETING */}
         {activeTab === 'home' && (
           <>
