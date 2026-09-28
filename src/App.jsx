@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from './context/AppContext';
 import Header from './components/common/Header';
 import BottomNav from './components/common/BottomNav';
@@ -11,6 +11,7 @@ import MemberLoanRequestModal from './components/member/MemberLoanRequestModal';
 import PendingLoanRequestsModal from './components/admin/PendingLoanRequestsModal';
 import FundManagerModal from './components/admin/FundManagerModal';
 import LoginScreen from './components/common/LoginScreen';
+import SubscriptionLockScreen from './components/common/SubscriptionLockScreen';
 import ActivityLogsModal from './components/common/ActivityLogsModal';
 import KishtProgressStepper from './components/common/KishtProgressStepper';
 import { formatINR, getLoanTimeline } from './utils/loanCalculator';
@@ -21,6 +22,43 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return localStorage.getItem('comm_logged_in') === 'true';
   });
+
+  // Remote Subscription / Maintenance Lock State
+  const [appStatus, setAppStatus] = useState({
+    isAppActive: false, // Locked by default
+    isLoading: true,
+    title: "Subscription Expired / सेवा निलंबित",
+    message: "The annual software license & server maintenance for Banking Society has expired. Access to all member accounts, records, and meeting collections has been temporarily suspended.",
+    subMessage: "Kripya portal re-activation ke liye software administrator / developer se sampark karein."
+  });
+
+  const [isDevBypassed, setIsDevBypassed] = useState(() => {
+    return sessionStorage.getItem('dev_master_unlocked') === 'true';
+  });
+
+  useEffect(() => {
+    const checkStatus = async () => {
+      try {
+        const timestamp = Date.now();
+        const res = await fetch(`./app-status.json?_t=${timestamp}`, { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          setAppStatus({
+            isAppActive: Boolean(data.isAppActive),
+            isLoading: false,
+            title: data.title || "Subscription Expired / सेवा निलंबित",
+            message: data.message || "The annual software license for Banking Society has expired.",
+            subMessage: data.subMessage || "Kripya software renewal ke liye administrator se sampark karein."
+          });
+        } else {
+          setAppStatus(prev => ({ ...prev, isAppActive: false, isLoading: false }));
+        }
+      } catch (err) {
+        setAppStatus(prev => ({ ...prev, isAppActive: false, isLoading: false }));
+      }
+    };
+    checkStatus();
+  }, []);
 
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'loans' | 'limits' | 'annual'
   const [adminHomeView, setAdminHomeView] = useState('meeting'); // 'meeting' | 'member'
@@ -33,8 +71,19 @@ export default function App() {
   const [loanSearch, setLoanSearch] = useState('');
   const [limitSearch, setLimitSearch] = useState('');
 
+  // 1. If App is Locked by Remote Switch and not bypassed by Developer
+  if (!isDevBypassed && !appStatus.isAppActive) {
+    return (
+      <SubscriptionLockScreen
+        title={appStatus.title}
+        message={appStatus.message}
+        subMessage={appStatus.subMessage}
+        onBypassSuccess={() => setIsDevBypassed(true)}
+      />
+    );
+  }
 
-  // If not logged in, show LoginScreen
+  // 2. If not logged in, show LoginScreen
   if (!isLoggedIn) {
     return (
       <LoginScreen
