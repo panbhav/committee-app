@@ -1,5 +1,9 @@
 {
   "appId": "com.committee.app",
   "appName": "Banking Society",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "url": "https://panbhav.github.io/committee-app",
+    "cleartext": true
+  }
 }
