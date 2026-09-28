@@ -36,28 +36,74 @@ export default function App() {
     return sessionStorage.getItem('dev_master_unlocked') === 'true';
   });
 
-  useEffect(() => {
-    const checkStatus = async () => {
-      try {
-        const timestamp = Date.now();
-        const res = await fetch(`./app-status.json?_t=${timestamp}`, { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          setAppStatus({
-            isAppActive: Boolean(data.isAppActive),
-            isLoading: false,
-            title: data.title || "Subscription Expired / सेवा निलंबित",
-            message: data.message || "The annual software license for Banking Society has expired.",
-            subMessage: data.subMessage || "Kripya software renewal ke liye administrator se sampark karein."
-          });
-        } else {
-          setAppStatus(prev => ({ ...prev, isAppActive: false, isLoading: false }));
+  const checkStatus = async () => {
+    try {
+      const timestamp = Date.now();
+      const endpoints = [
+        `./app-status.json?_t=${timestamp}`,
+        `https://panbhav.github.io/committee-app/app-status.json?_t=${timestamp}`,
+        `https://raw.githubusercontent.com/panbhav/committee-app/main/public/app-status.json?_t=${timestamp}`
+      ];
+
+      let data = null;
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(url, { cache: 'no-store' });
+          if (res.ok) {
+            data = await res.json();
+            break;
+          }
+        } catch (e) {}
+      }
+
+      if (data && typeof data.isAppActive === 'boolean') {
+        const active = data.isAppActive;
+        setAppStatus({
+          isAppActive: active,
+          isLoading: false,
+          title: data.title || "Subscription Expired / सेवा निलंबित",
+          message: data.message || "The annual software license for Banking Society has expired.",
+          subMessage: data.subMessage || "Kripya software renewal ke liye administrator se sampark karein."
+        });
+
+        // If inactive and not dev-bypassed: force complete automatic logout immediately!
+        if (!active && sessionStorage.getItem('dev_master_unlocked') !== 'true') {
+          localStorage.removeItem('comm_logged_in');
+          localStorage.removeItem('comm_current_user');
+          setIsLoggedIn(false);
         }
-      } catch (err) {
+      } else {
+        // If config unreachable, lock down by default
         setAppStatus(prev => ({ ...prev, isAppActive: false, isLoading: false }));
+        if (sessionStorage.getItem('dev_master_unlocked') !== 'true') {
+          localStorage.removeItem('comm_logged_in');
+          localStorage.removeItem('comm_current_user');
+          setIsLoggedIn(false);
+        }
+      }
+    } catch (err) {
+      setAppStatus(prev => ({ ...prev, isAppActive: false, isLoading: false }));
+    }
+  };
+
+  useEffect(() => {
+    checkStatus();
+
+    // Check whenever user switches to the app or brings it to the foreground
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        checkStatus();
       }
     };
-    checkStatus();
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', checkStatus);
+    const interval = setInterval(checkStatus, 10000); // Check every 10 seconds
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', checkStatus);
+      clearInterval(interval);
+    };
   }, []);
 
   const [activeTab, setActiveTab] = useState('home'); // 'home' | 'loans' | 'limits' | 'annual'
@@ -73,12 +119,19 @@ export default function App() {
 
   // 1. If App is Locked by Remote Switch and not bypassed by Developer
   if (!isDevBypassed && !appStatus.isAppActive) {
+    // Purge local logged-in state automatically
+    if (localStorage.getItem('comm_logged_in')) {
+      localStorage.removeItem('comm_logged_in');
+    }
     return (
       <SubscriptionLockScreen
         title={appStatus.title}
         message={appStatus.message}
         subMessage={appStatus.subMessage}
-        onBypassSuccess={() => setIsDevBypassed(true)}
+        onBypassSuccess={() => {
+          setIsDevBypassed(true);
+          sessionStorage.setItem('dev_master_unlocked', 'true');
+        }}
       />
     );
   }
