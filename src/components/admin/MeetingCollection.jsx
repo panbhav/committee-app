@@ -1,5 +1,6 @@
+import Modal from '../common/Modal';
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { formatINR } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import { CheckCircle2, Clock, AlertCircle, PlusCircle, CheckCheck, FileSpreadsheet, FileDown, Search, Wallet, Calendar } from 'lucide-react';
@@ -37,7 +38,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
   const outerLoans = loans.filter(l => l.type === 'outer');
   const selfTotalKisht = selfLoans.reduce((s, l) => s + l.monthlyKisht, 0);
   const outerTotalKisht = outerLoans.reduce((s, l) => s + l.monthlyKisht, 0);
-  const totalUnits = members.length * (monthlyUnit || 1000);
+  const totalUnits = members.length * monthlyUnit;
 
   const handleSavePartial = () => {
     if (!activeModalMember) return;
@@ -45,7 +46,11 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
     const short = Number(shortInput) || 0;
     const extra = Number(extraInput) || 0;
     const deposit = bill.totalDue - short + extra;
-    recordPartialPayment(activeModalMember.id, deposit, short, extra);
+    if (!Number.isFinite(short) || short < 0 || short > bill.totalDue || !Number.isFinite(extra) || extra < 0 || (short > 0 && extra > 0)) {
+      alert('Enter either a short amount up to the amount due, or a non-negative extra amount.');
+      return;
+    }
+    if (recordPartialPayment(activeModalMember.id, deposit, short, extra) === false) return;
     setActiveModalMember(null);
     setShortInput('');
     setExtraInput('');
@@ -57,7 +62,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
     if (!matchesSearch) return false;
 
     const p = payments[m.id];
-    const isPaid = p && (p.status === 'paid' || p.status === 'short');
+    const isPaid = p && p.status === 'paid';
     if (filter === 'paid') return isPaid;
     if (filter === 'pending') return !isPaid;
     return true;
@@ -74,7 +79,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
   return (
     <div className="space-y-4 pb-20">
       {/* Top Meeting Overview Card */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-4 shadow-xl">
+      <div className="meeting-overview bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 rounded-3xl p-4 shadow-xl">
         <div className="space-y-2.5 mb-3">
           {/* Top Bar: Meeting Cashflow Badge & Month Quick-Switcher */}
           <div className="flex items-center justify-between gap-2">
@@ -178,7 +183,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
           <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800/60">
             <span className="text-[10px] text-slate-400 block font-medium">{t.collectedSoFar}:</span>
             <span className="text-sm font-bold text-emerald-400">{formatINR(stats.totalCollected)}</span>
-            <span className="text-[10px] text-slate-500 block">{stats.paidCount} / 15 {t.filterPaid}</span>
+            <span className="text-[10px] text-slate-500 block">{stats.paidCount} / {members.length} {t.filterPaid}</span>
           </div>
           <div className="bg-slate-950/60 p-2.5 rounded-2xl border border-slate-800/60">
             <span className="text-[10px] text-slate-400 block font-medium">{t.pendingRecovery}:</span>
@@ -192,7 +197,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
           {isSuperAdmin && (
             <button
               onClick={() => {
-                if (confirm('Mark all 15 members as fully paid for September?')) {
+                if (confirm(`Mark all ${members.length} members as fully paid for ${meetingMonth}?`)) {
                   markAllPaid();
                 }
               }}
@@ -228,6 +233,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
         <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           type="text"
+          aria-label={t.searchMemberPlaceholder}
           placeholder={t.searchMemberPlaceholder}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -251,7 +257,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
             onClick={() => setFilter('all')}
             className={`px-3 py-1 rounded-lg font-semibold transition ${filter === 'all' ? 'bg-slate-800 text-white shadow' : 'text-slate-400'}`}
           >
-            {t.all} (15)
+            {t.all} ({members.length})
           </button>
           <button
             onClick={() => setFilter('pending')}
@@ -273,7 +279,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
       </div>
 
       {/* Member Collection Cards */}
-      <div className="space-y-2.5">
+      <div className="collection-grid space-y-2.5">
         {filteredMembers.length === 0 ? (
           <div className="p-8 text-center text-slate-500 text-xs bg-slate-900/40 rounded-2xl border border-slate-800">
             No members found matching "{searchQuery}".
@@ -402,7 +408,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
 
       {/* Partial / Short Modal */}
       {activeModalMember && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal onClose={() => setActiveModalMember(null)} label="Record a payment adjustment" className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2">
               <h3 className="text-sm font-bold text-white">
@@ -422,10 +428,10 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
 
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                <label htmlFor="meetingcollection-field-1" className="text-[11px] font-semibold text-slate-300 block mb-1">
                   Short Amount (Kam Diya):
                 </label>
-                <input
+                <input id="meetingcollection-field-1"
                   type="number"
                   placeholder="e.g. 2000"
                   value={shortInput}
@@ -435,10 +441,10 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
               </div>
 
               <div>
-                <label className="text-[11px] font-semibold text-slate-300 block mb-1">
+                <label htmlFor="meetingcollection-field-2" className="text-[11px] font-semibold text-slate-300 block mb-1">
                   Extra Amount (Zyada Diya / Advance):
                 </label>
-                <input
+                <input id="meetingcollection-field-2"
                   type="number"
                   placeholder="e.g. 1000"
                   value={extraInput}
@@ -463,7 +469,7 @@ export default function MeetingCollection({ onOpenNewLoan, onOpenFundManager }) 
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

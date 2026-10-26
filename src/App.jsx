@@ -1,5 +1,6 @@
+import Modal from './components/common/Modal';
 import React, { useState, useEffect } from 'react';
-import { useApp } from './context/AppContext';
+import { useApp } from './context/useApp';
 import Header from './components/common/Header';
 import BottomNav from './components/common/BottomNav';
 import MeetingCollection from './components/admin/MeetingCollection';
@@ -12,15 +13,18 @@ import PendingLoanRequestsModal from './components/admin/PendingLoanRequestsModa
 import FundManagerModal from './components/admin/FundManagerModal';
 import LoginScreen from './components/common/LoginScreen';
 import SubscriptionLockScreen from './components/common/SubscriptionLockScreen';
+import AppFooter from './components/common/AppFooter';
 import ActivityLogsModal from './components/common/ActivityLogsModal';
 import KishtProgressStepper from './components/common/KishtProgressStepper';
 import { formatINR, getLoanTimeline } from './utils/loanCalculator';
-import { Users, FileText, Plus, Search, Bell, Calendar, Building2, User, Send } from 'lucide-react';
+import { Plus, Search, Calendar, Building2, User, Send, ArrowUpRight, Wallet, Users, Landmark } from 'lucide-react';
+
+import { DEMO_MODE } from './config';
 
 export default function App() {
-  const { currentUser, isSuperAdmin, loans, members, getMemberLimits, loanRequests, currentOuterLoanId, advanceAllActiveLoans, t } = useApp();
+  const { currentUser, isSuperAdmin, loans, members, payments, getMemberBill, getMemberLimits, loanRequests, currentOuterLoanId, advanceAllActiveLoans, meetingMonth, getMeetingStats, availableCashFund, lang, t } = useApp();
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return localStorage.getItem('comm_logged_in') === 'true';
+    return DEMO_MODE && localStorage.getItem('comm_logged_in') === 'true' && (currentUser !== null || currentOuterLoanId !== null);
   });
 
   // Remote Subscription / Maintenance Lock State
@@ -30,10 +34,6 @@ export default function App() {
     title: "Subscription Expired / सेवा निलंबित",
     message: "The annual software license & server maintenance for Banking Society has expired. Access to all member accounts, records, and meeting collections has been temporarily suspended.",
     subMessage: "Kripya portal re-activation ke liye software administrator / developer se sampark karein."
-  });
-
-  const [isDevBypassed, setIsDevBypassed] = useState(() => {
-    return sessionStorage.getItem('dev_master_unlocked') === 'true';
   });
 
   const checkStatus = async () => {
@@ -48,12 +48,12 @@ export default function App() {
       let data = null;
       for (const url of endpoints) {
         try {
-          const res = await fetch(url, { cache: 'no-store' });
+          const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
           if (res.ok) {
             data = await res.json();
             break;
           }
-        } catch (e) {}
+        } catch {}
       }
 
       if (data && typeof data.isAppActive === 'boolean') {
@@ -67,7 +67,7 @@ export default function App() {
         });
 
         // If inactive and not dev-bypassed: force complete automatic logout immediately!
-        if (!active && sessionStorage.getItem('dev_master_unlocked') !== 'true') {
+        if (!active) {
           localStorage.removeItem('comm_logged_in');
           localStorage.removeItem('comm_current_user');
           setIsLoggedIn(false);
@@ -75,19 +75,20 @@ export default function App() {
       } else {
         // If config unreachable, lock down by default
         setAppStatus(prev => ({ ...prev, isAppActive: false, isLoading: false }));
-        if (sessionStorage.getItem('dev_master_unlocked') !== 'true') {
+        if (!DEMO_MODE) {
           localStorage.removeItem('comm_logged_in');
           localStorage.removeItem('comm_current_user');
           setIsLoggedIn(false);
         }
       }
-    } catch (err) {
+    } catch {
       setAppStatus(prev => ({ ...prev, isAppActive: false, isLoading: false }));
     }
   };
 
   useEffect(() => {
-    checkStatus();
+    if (DEMO_MODE) return;
+    const initialCheck = setTimeout(checkStatus, 0);
 
     // Check whenever user switches to the app or brings it to the foreground
     const handleVisibility = () => {
@@ -100,6 +101,7 @@ export default function App() {
     const interval = setInterval(checkStatus, 10000); // Check every 10 seconds
 
     return () => {
+      clearTimeout(initialCheck);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('focus', checkStatus);
       clearInterval(interval);
@@ -117,23 +119,11 @@ export default function App() {
   const [loanSearch, setLoanSearch] = useState('');
   const [limitSearch, setLimitSearch] = useState('');
 
-  // 1. If App is Locked by Remote Switch and not bypassed by Developer
-  if (!isDevBypassed && !appStatus.isAppActive) {
-    // Purge local logged-in state automatically
-    if (localStorage.getItem('comm_logged_in')) {
-      localStorage.removeItem('comm_logged_in');
-    }
-    return (
-      <SubscriptionLockScreen
-        title={appStatus.title}
-        message={appStatus.message}
-        subMessage={appStatus.subMessage}
-        onBypassSuccess={() => {
-          setIsDevBypassed(true);
-          sessionStorage.setItem('dev_master_unlocked', 'true');
-        }}
-      />
-    );
+  if (!DEMO_MODE && appStatus.isLoading) {
+    return <div className="status-loading" role="status"><Landmark size={36} /><p>Opening Banking Society…</p></div>;
+  }
+  if (!DEMO_MODE && !appStatus.isAppActive) {
+    return <SubscriptionLockScreen title={appStatus.title} message={appStatus.message} subMessage={appStatus.subMessage} />;
   }
 
   // 2. If not logged in, show LoginScreen
@@ -151,10 +141,11 @@ export default function App() {
   // If viewing as an Outsider (currentUser is null, but currentOuterLoanId is set)
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col w-full max-w-md mx-auto relative border-x border-slate-900 shadow-2xl overflow-x-hidden">
+      <div className="app-shell passbook-shell">
         <Header />
-        <main className="flex-1 p-3 sm:p-4 overflow-x-hidden">
+        <main id="main-content" className="app-main">
           <OuterPassbook />
+          <AppFooter />
         </main>
       </div>
     );
@@ -163,8 +154,8 @@ export default function App() {
 
   // Filter Loans by borrower or guarantor
   const filteredLoans = loans.filter(l =>
-    l.borrowerName.toLowerCase().includes(loanSearch.toLowerCase()) ||
-    l.guarantor.toLowerCase().includes(loanSearch.toLowerCase()) ||
+    String(l.borrowerName || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
+    String(l.guarantor || '').toLowerCase().includes(loanSearch.toLowerCase()) ||
     String(l.id).includes(loanSearch)
   );
 
@@ -174,10 +165,26 @@ export default function App() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col w-full max-w-md mx-auto relative border-x border-slate-900 shadow-2xl overflow-x-hidden">
+    <div className="app-shell">
       <Header />
 
-      <main className="flex-1 p-3 sm:p-4 overflow-y-auto overflow-x-hidden">
+      <main id="main-content" className="app-main">
+        <div className="page-heading">
+          <div>
+            <p className="eyebrow">{lang === 'hi' ? 'आपकी कमेटी, एक साथ' : 'YOUR COMMUNITY. CONNECTED.'}</p>
+            <h2>{activeTab === 'home' ? (lang === 'hi' ? 'स्वागत है, ' : 'Welcome back, ') + currentUser.name.charAt(0) + currentUser.name.slice(1).toLowerCase() : activeTab === 'loans' ? t.activeLoansRegister : activeTab === 'limits' ? t.memberRiskLimits : t.tabAnnual}<span className="heading-dot">.</span></h2>
+            <p className="page-subtitle">{lang === 'hi' ? 'बचत, संग्रह और हर किश्त का स्पष्ट हिसाब।' : 'A clear view of your savings, collections, and every installment.'}</p>
+          </div>
+          <span className="period-badge"><Calendar size={15} />{meetingMonth}</span>
+        </div>
+        {activeTab === 'home' && isSuperAdmin && adminHomeView === 'meeting' && (
+          <div className="overview-grid">
+            <div className="overview-stat featured"><span className="stat-icon"><Wallet size={19} /></span><span>{lang === 'hi' ? 'कुल संग्रह' : 'Collected this month'}</span><strong>{formatINR(getMeetingStats().totalCollected)}</strong><small><ArrowUpRight size={13} /> {getMeetingStats().paidCount} / {members.length} {lang === 'hi' ? 'सदस्य जमा' : 'members paid'}</small></div>
+            <div className="overview-stat"><span className="stat-icon amber"><Calendar size={19} /></span><span>{lang === 'hi' ? 'बकाया संग्रह' : 'Collection remaining'}</span><strong>{formatINR(Math.max(0, getMeetingStats().totalExpected - getMeetingStats().totalCollected))}</strong><small>{getMeetingStats().pendingCount} {lang === 'hi' ? 'सदस्य बाकी' : 'members to follow up'}</small></div>
+            <div className="overview-stat"><span className="stat-icon indigo"><Users size={19} /></span><span>{lang === 'hi' ? 'सक्रिय लोन' : 'Loans in register'}</span><strong>{loans.length}<em> / {members.length} {lang === 'hi' ? 'सदस्य' : 'members'}</em></strong><small>{lang === 'hi' ? 'खुद और बाहरी उधारकर्ता' : 'Member & outer borrower accounts'}</small></div>
+            <div className="overview-stat"><span className="stat-icon"><Landmark size={19} /></span><span>{lang === 'hi' ? 'नकद रिज़र्व' : 'Opening cash reserve'}</span><strong>{formatINR(availableCashFund)}</strong><small>{lang === 'hi' ? 'संग्रह से पहले उपलब्ध शेष' : 'Balance before meeting collections'}</small></div>
+          </div>
+        )}
         {/* TAB 1: HOME / MEETING */}
         {activeTab === 'home' && (
           <>
@@ -295,6 +302,7 @@ export default function App() {
               <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                aria-label={t.searchLoansPlaceholder}
                 placeholder={t.searchLoansPlaceholder}
                 value={loanSearch}
                 onChange={(e) => setLoanSearch(e.target.value)}
@@ -310,14 +318,14 @@ export default function App() {
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="loan-grid space-y-2">
               {filteredLoans.length === 0 ? (
                 <div className="p-8 text-center text-slate-500 text-xs bg-slate-900/40 rounded-2xl border border-slate-800">
                   No loans found matching "{loanSearch}".
                 </div>
               ) : (
                 filteredLoans.map(l => {
-                  const timeline = getLoanTimeline(l.currentMonth, l.totalMonths || 12);
+                  const timeline = getLoanTimeline(l.currentMonth, l.totalMonths || 12, meetingMonth);
                   return (
                     <div
                       key={l.id}
@@ -379,6 +387,7 @@ export default function App() {
               <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
+                aria-label={t.searchLimitsPlaceholder}
                 placeholder={t.searchLimitsPlaceholder}
                 value={limitSearch}
                 onChange={(e) => setLimitSearch(e.target.value)}
@@ -395,7 +404,7 @@ export default function App() {
             </div>
 
 
-            <div className="space-y-2.5">
+            <div className="limits-grid space-y-2.5">
               {filteredMembers.map(m => {
                 const limits = getMemberLimits(m.name);
                 const selfPct = Math.min(100, Math.round((limits.selfUsed / limits.memberLimit) * 100));
@@ -447,6 +456,7 @@ export default function App() {
         {activeTab === 'annual' && (
           <AnnualMeetingModal />
         )}
+        <AppFooter />
       </main>
 
       <BottomNav
@@ -487,7 +497,7 @@ export default function App() {
 
       {/* Full Committee Meeting Bahikhata Modal (For Members) */}
       {showBahikhataModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-3">
+        <Modal onClose={() => setShowBahikhataModal(false)} label="Committee collection register" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-3">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-3 max-h-[88vh] flex flex-col">
             <div className="flex justify-between items-center border-b border-slate-800 pb-2.5 flex-shrink-0">
               <div>
@@ -535,7 +545,7 @@ export default function App() {
               })}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

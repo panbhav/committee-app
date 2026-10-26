@@ -1,6 +1,8 @@
+import Modal from './Modal';
 import React, { useState } from 'react';
-import { useApp, isRelevantAuditLog } from '../../context/AppContext';
-import { History, Undo2, UserCheck, Shield, Clock, AlertCircle } from 'lucide-react';
+import { useApp } from '../../context/useApp';
+import { isRelevantAuditLog } from '../../context/appStore';
+import { History, Undo2, Clock } from 'lucide-react';
 
 export default function ActivityLogsModal({ isOpen, onClose }) {
   const { auditLogs, rollbackAction, isSuperAdmin, t } = useApp();
@@ -25,7 +27,7 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <Modal onClose={onClose} label="Activity history" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[88vh] flex flex-col">
         {/* Header */}
         <div className="flex justify-between items-center border-b border-slate-800 pb-3 flex-shrink-0">
@@ -135,9 +137,9 @@ export default function ActivityLogsModal({ isOpen, onClose }) {
         </div>
 
         <div className="text-center pt-2 border-t border-slate-800/80 text-[10px] text-slate-500 flex-shrink-0">
-          🔒 Tamper-evident audit trail • Every change records who & when
+          Activity history · Records the account and time of each change
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

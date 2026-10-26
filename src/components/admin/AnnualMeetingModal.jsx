@@ -1,8 +1,9 @@
+import Modal from '../common/Modal';
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { formatINR } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
-import { Award, TrendingUp, Users, Sparkles, Settings2, CheckCircle2, RotateCcw, FileSpreadsheet, FileDown, ShieldCheck, Percent, HelpCircle } from 'lucide-react';
+import { Sparkles, Settings2, CheckCircle2, RotateCcw, FileSpreadsheet, FileDown } from 'lucide-react';
 
 export default function AnnualMeetingModal() {
   const {
@@ -69,6 +70,11 @@ export default function AnnualMeetingModal() {
   };
 
   const handleSaveConfig = () => {
+    const values = [customSelfInput, customOuterInput, ...Object.values(memberGuarantees)].map(Number);
+    if (useCustom && values.some(value => !Number.isFinite(value) || value < 0)) {
+      alert('Annual totals and guarantees must be non-negative numbers.');
+      return;
+    }
     const parsedGuarantees = {};
     Object.entries(memberGuarantees).forEach(([name, val]) => {
       parsedGuarantees[name] = Number(val) || 0;
@@ -183,11 +189,11 @@ export default function AnnualMeetingModal() {
                 {t.poolDividend} (7% Pool):
               </span>
               <span className="text-[9px] text-emerald-400 bg-emerald-950 px-1.5 py-0.2 rounded border border-emerald-800">
-                1/15 Share
+                1/{members.length || 1} Share
               </span>
             </div>
             <div className="text-lg font-black text-emerald-300">
-              {formatINR(stats.perMemberPoolDividend)} <span className="text-[11px] font-normal text-slate-300">/ member</span>
+              {formatINR(stats.perMemberPoolDividend)} <span className="text-[11px] font-normal text-slate-300">/ member (base)</span>
             </div>
             <span className="text-[10px] text-slate-400 block">
               Total Pool: {formatINR(stats.totalCommonPool)}
@@ -238,7 +244,7 @@ export default function AnnualMeetingModal() {
           <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
             {t.memberPayoutSheet}
           </span>
-          <span className="text-[11px] text-slate-400">15 Members</span>
+          <span className="text-[11px] text-slate-400">{members.length} Members</span>
         </div>
 
         <div className="space-y-2">
@@ -280,7 +286,7 @@ export default function AnnualMeetingModal() {
 
       {/* Super Admin Modal: Edit Cumulative Loan Totals */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <Modal onClose={() => setIsEditModalOpen(false)} label="Annual settlement settings" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-800 pb-3">
               <div>
@@ -341,10 +347,10 @@ export default function AnnualMeetingModal() {
             {useCustom && (
               <div className="space-y-3 pt-1">
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1 text-xs">
+                  <label htmlFor="annualmeetingmodal-field-1" className="text-slate-300 font-semibold block mb-1 text-xs">
                     Total Self Loans Given Till Now (अब तक कुल सेल्फ लोन राशि):
                   </label>
-                  <input
+                  <input id="annualmeetingmodal-field-1"
                     type="number"
                     step="10000"
                     value={customSelfInput}
@@ -358,10 +364,10 @@ export default function AnnualMeetingModal() {
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1 text-xs">
+                  <label htmlFor="annualmeetingmodal-field-2" className="text-slate-300 font-semibold block mb-1 text-xs">
                     Total Outer Loans Given Till Now (अब तक कुल बाहरी लोन राशि):
                   </label>
-                  <input
+                  <input id="annualmeetingmodal-field-2"
                     type="number"
                     step="10000"
                     value={customOuterInput}
@@ -429,7 +435,7 @@ export default function AnnualMeetingModal() {
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

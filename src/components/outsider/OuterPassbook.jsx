@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { formatINR, getLoanTimeline, getInstallmentSchedule } from '../../utils/loanCalculator';
 import DocumentViewerModal from '../common/DocumentViewerModal';
-import { ShieldCheck, Phone, FileCheck2, AlertCircle, Calendar, Clock, CheckCircle2, Paperclip, Eye } from 'lucide-react';
+import { ShieldCheck, Phone, Calendar, Clock, Paperclip, Eye } from 'lucide-react';
 
 export default function OuterPassbook() {
-  const { loans, currentOuterLoanId, members, t } = useApp();
+  const { loans, currentOuterLoanId, members, meetingMonth, lang, t } = useApp();
   const [viewingDoc, setViewingDoc] = useState(null);
 
-  const loan = loans.find(l => l.id === currentOuterLoanId) || loans.find(l => l.type === 'outer');
+  const loan = loans.find(l => l.id === currentOuterLoanId);
 
   if (!loan) {
     return (
@@ -23,14 +23,14 @@ export default function OuterPassbook() {
   const effectiveKisht = loan.outsiderMonthlyKisht || loan.monthlyKisht;
 
   const guarantorMember = members.find(m => m.name === loan.guarantor);
-  const totalRepayable = effectiveKisht * totalMonths;
-  const remainingKishts = Math.max(0, totalMonths - loan.currentMonth);
+  const earlierInstallments = Math.min(totalMonths, Math.max(0, (loan.currentMonth || 1) - 1));
+  const remainingKishts = totalMonths - earlierInstallments;
   const remainingBalance = remainingKishts * effectiveKisht;
-  const totalPaidSoFar = (totalMonths - remainingKishts) * effectiveKisht;
-  const progressPercent = Math.min(100, Math.round(((loan.currentMonth || 1) / totalMonths) * 100));
+  const earlierScheduledAmount = earlierInstallments * effectiveKisht;
+  const progressPercent = Math.min(100, Math.round((earlierInstallments / totalMonths) * 100));
 
-  const timeline = getLoanTimeline(loan.currentMonth, totalMonths);
-  const schedule = getInstallmentSchedule(loan.currentMonth, totalMonths);
+  const timeline = getLoanTimeline(loan.currentMonth, totalMonths, meetingMonth);
+  const schedule = getInstallmentSchedule(loan.currentMonth, totalMonths, meetingMonth);
 
   return (
     <div className="space-y-4 pb-20">
@@ -85,11 +85,11 @@ export default function OuterPassbook() {
         {/* Progress Bar & Remaining Kishts */}
         <div className="mt-4 space-y-2">
           <div className="flex justify-between items-center text-xs font-semibold">
-            <span className="text-slate-400">{t.repaymentProgress}:</span>
+            <span className="text-slate-400">{lang === 'hi' ? 'अनुमानित शेड्यूल प्रगति' : 'Scheduled progress'}:</span>
             <div className="flex items-center gap-1.5">
-              <span className="text-white font-bold">{loan.currentMonth} / {totalMonths} Mos</span>
+              <span className="text-white font-bold">{earlierInstallments} / {totalMonths} Mos</span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/80 text-amber-300 border border-amber-800/60">
-                {Math.max(0, totalMonths - loan.currentMonth)} Bachi (Remaining)
+                {remainingKishts} scheduled
               </span>
             </div>
           </div>
@@ -100,8 +100,8 @@ export default function OuterPassbook() {
             />
           </div>
           <div className="flex justify-between text-[11px] text-slate-400 pt-0.5">
-            <span>{t.paidSoFar}: <b className="text-slate-200">{formatINR(totalPaidSoFar)}</b></span>
-            <span>Bachi Rashi (Remaining): <b className="text-emerald-400">{formatINR(remainingBalance)}</b></span>
+            <span>Earlier scheduled: <b className="text-slate-200">{formatINR(earlierScheduledAmount)}</b></span>
+            <span>Scheduled balance: <b className="text-emerald-400">{formatINR(remainingBalance)}</b></span>
           </div>
         </div>
       </div>
@@ -156,21 +156,22 @@ export default function OuterPassbook() {
       <div className="space-y-2">
         <div className="flex justify-between items-center px-1">
           <span className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            {t.installmentReceipts}
+            {lang === 'hi' ? 'अनुमानित किश्त शेड्यूल' : 'Projected installment schedule'}
           </span>
           <span className="text-[11px] text-slate-400">{totalMonths} Months Schedule</span>
         </div>
 
+        <p className="text-[11px] text-slate-400 px-1">Dates and amounts follow the installment counter. They are estimates, not payment receipts.</p>
         <div className="space-y-1.5">
           {schedule.map((item) => {
-            const isPaid = item.status === 'paid';
+            const isEarlier = item.status === 'earlier';
             const isCurrent = item.status === 'current';
 
             return (
               <div
                 key={item.kishtNum}
                 className={`border rounded-xl p-3 flex items-center justify-between text-xs transition ${
-                  isPaid
+                  isEarlier
                     ? 'bg-slate-900/60 border-emerald-900/30'
                     : isCurrent
                     ? 'bg-slate-900 border-amber-500/50 shadow-md shadow-amber-950/20'
@@ -179,13 +180,13 @@ export default function OuterPassbook() {
               >
                 <div className="flex items-center gap-2.5">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs ${
-                    isPaid
+                    isEarlier
                       ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                       : isCurrent
                       ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse'
                       : 'bg-slate-800 text-slate-400'
                   }`}>
-                    {isPaid ? '✓' : item.kishtNum}
+                    {item.kishtNum}
                   </div>
                   <div>
                     <div className="font-semibold text-white flex items-center gap-1.5">
@@ -195,18 +196,18 @@ export default function OuterPassbook() {
                     <div className="text-[10px] text-slate-400 flex items-center gap-1">
                       <Clock className="w-2.5 h-2.5 text-slate-500" />
                       <span>{item.dueDate}</span>
-                      {isPaid && <span className="text-emerald-400">• Paid via {loan.guarantor}</span>}
+                      {isEarlier && <span className="text-emerald-400">• Earlier scheduled</span>}
                       {isCurrent && <span className="text-amber-400 font-bold">• Due This Month</span>}
                     </div>
                   </div>
                 </div>
 
                 <div className="text-right">
-                  <span className={`font-bold ${isPaid ? 'text-emerald-400' : isCurrent ? 'text-amber-400' : 'text-slate-400'}`}>
+                  <span className={`font-bold ${isEarlier ? 'text-emerald-400' : isCurrent ? 'text-amber-400' : 'text-slate-400'}`}>
                     {formatINR(effectiveKisht)}
                   </span>
                   <span className="text-[9px] text-slate-500 block">
-                    {isPaid ? `Receipt #${loan.id}-${item.kishtNum}` : isCurrent ? 'Action Pending' : 'Upcoming'}
+                    {isEarlier ? 'Confirm payment with guarantor' : isCurrent ? 'Due this meeting' : 'Upcoming'}
                   </span>
                 </div>
               </div>

@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Identity-document uploads stay disabled until a separate private storage
+    // and malware-scanning workflow is deployed. No public download tokens.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

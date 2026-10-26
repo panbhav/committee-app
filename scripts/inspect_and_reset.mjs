@@ -32,6 +32,14 @@ async function run() {
     console.log("No existing document found in Firestore.");
   }
 
+  if (!process.argv.includes('--reset')) {
+    console.log('Read-only inspection complete. No records changed.');
+    process.exit(0);
+  }
+  if (process.env.COMMITTEE_CONFIRM_RESET !== 'committee/global_state') {
+    throw new Error('Reset requires --reset and COMMITTEE_CONFIRM_RESET=committee/global_state. Back up the cloud document before using this destructive maintenance action.');
+  }
+
   // Prepare initial payments
   const initialPayments = {};
   INITIAL_MEMBERS.forEach(m => {
@@ -69,6 +77,8 @@ async function run() {
     members: INITIAL_MEMBERS,
     loans: INITIAL_LOANS,
     payments: initialPayments,
+    loansByMonth: { 'September 2026': INITIAL_LOANS },
+    paymentsByMonth: { 'September 2026': initialPayments },
     auditLogs: initialAuditLogs,
     loanRequests: [],
     monthlyUnit: 1000,

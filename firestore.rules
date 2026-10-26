@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // No browser, including an administrator browser, can read or write ledger,
+    // roles, audit history, or legacy shared data directly. Callable functions
+    // verify the identity, account mapping, role, App Check, and payload.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

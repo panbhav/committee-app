@@ -1,38 +1,11 @@
-import React, { useState } from 'react';
-import { Lock, AlertTriangle, ShieldAlert, KeyRound, RefreshCw, PhoneCall } from 'lucide-react';
+import React from 'react';
+import { Lock, AlertTriangle, ShieldAlert, RefreshCw } from 'lucide-react';
 
 export default function SubscriptionLockScreen({
   title = "Subscription Expired / सेवा निलंबित",
   message = "The annual software license & server maintenance for Banking Society has expired. Access to all member accounts, records, and meeting collections has been temporarily suspended.",
-  subMessage = "Kripya portal re-activation ke liye software administrator / developer se sampark karein.",
-  onBypassSuccess
+  subMessage = "Kripya portal re-activation ke liye software administrator / developer se sampark karein."
 }) {
-  const [showBypassInput, setShowBypassInput] = useState(false);
-  const [bypassCode, setBypassCode] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
-  const [tapCount, setTapCount] = useState(0);
-
-  // Hidden developer tap: tapping the lock icon 5 times opens the master bypass input
-  const handleLockTap = () => {
-    const nextCount = tapCount + 1;
-    setTapCount(nextCount);
-    if (nextCount >= 5) {
-      setShowBypassInput(true);
-      setTapCount(0);
-    }
-  };
-
-  const handleVerifyBypass = (e) => {
-    e.preventDefault();
-    if (bypassCode.trim() === '9988' || bypassCode.trim() === 'admin9988') {
-      sessionStorage.setItem('dev_master_unlocked', 'true');
-      if (onBypassSuccess) onBypassSuccess();
-    } else {
-      setErrorMsg('Invalid Developer Master Code');
-      setTimeout(() => setErrorMsg(''), 3000);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 via-[#0a0f1d] to-slate-950 text-slate-100 flex flex-col items-center justify-center p-4 relative overflow-hidden select-none">
       {/* Background ambient red/amber glow */}
@@ -45,7 +18,6 @@ export default function SubscriptionLockScreen({
           <div className="absolute inset-0 bg-red-500/20 rounded-full animate-ping opacity-40" />
           <button
             type="button"
-            onClick={handleLockTap}
             className="w-18 h-18 rounded-2xl bg-gradient-to-tr from-red-950 to-red-900 border border-red-500/50 flex items-center justify-center text-red-400 shadow-lg cursor-pointer active:scale-95 transition"
             title="Banking Society Security Gate"
           >
@@ -90,38 +62,22 @@ export default function SubscriptionLockScreen({
           </button>
         </div>
 
-        {/* Hidden Master Developer Unlock Form */}
-        {showBypassInput ? (
-          <form onSubmit={handleVerifyBypass} className="pt-3 border-t border-slate-800 space-y-2 animate-fadeIn">
-            <div className="text-[10px] text-indigo-400 font-bold flex items-center justify-center gap-1">
-              <KeyRound className="w-3 h-3" />
-              <span>Developer Master Unlock</span>
-            </div>
-            <div className="flex gap-1.5">
-              <input
-                type="password"
-                placeholder="Enter Master Code"
-                value={bypassCode}
-                onChange={(e) => setBypassCode(e.target.value)}
-                className="flex-1 bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white text-center font-mono focus:outline-none focus:border-indigo-500"
-              />
-              <button
-                type="submit"
-                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition"
+
+        <div className="pt-3 border-t border-slate-800/80 text-center">
+            <p className="text-[10px] text-slate-500">
+              Designed &amp; Developed by{' '}
+              <a
+                href="https://pixeltocloud.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-400 hover:text-emerald-300 font-bold underline decoration-emerald-500/40 underline-offset-2"
               >
-                Unlock
-              </button>
-            </div>
-            {errorMsg && (
-              <p className="text-[10px] text-red-400 font-bold">{errorMsg}</p>
-            )}
-          </form>
-        ) : (
-          <p className="text-[9px] text-slate-600">
-            System ID: BS-SEC-2026 • Encrypted Gateway
-          </p>
-        )}
+                PixelToCloud
+              </a>{' '}
+              (pixeltocloud.com)
+            </p>
+          </div>
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }

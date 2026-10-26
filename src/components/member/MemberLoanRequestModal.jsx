@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import Modal from '../common/Modal';
+import React, { useState } from 'react';
+import { useApp } from '../../context/useApp';
 import { calculateKisht, calculateSecurityFee, getStandardRate, formatINR } from '../../utils/loanCalculator';
 import DocumentAttachmentInput from '../common/DocumentAttachmentInput';
-import { Send, Sparkles, AlertTriangle, CheckCircle2, User, Clock, Percent, Zap } from 'lucide-react';
+import { Send, Sparkles, AlertTriangle, Clock, Percent, Zap } from 'lucide-react';
 
 export default function MemberLoanRequestModal({ isOpen, onClose }) {
   const { currentUser, isSuperAdmin, submitLoanRequest, disburseLoan, getMemberLimits, t } = useApp();
@@ -15,7 +16,8 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
   const [borrowerAadhar, setBorrowerAadhar] = useState('');
   const [documents, setDocuments] = useState([]);
   const [principal, setPrincipal] = useState('50000');
-  const [chargedRate, setChargedRate] = useState('16');
+  const [customChargedRate, setChargedRate] = useState('');
+  const chargedRate = customChargedRate || String(getStandardRate(type, totalMonths));
   const [note, setNote] = useState('');
   const [instantDisburse, setInstantDisburse] = useState(false);
 
@@ -24,17 +26,6 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
     const formatted = raw.replace(/(\d{4})(?=\d)/g, '$1 ');
     setBorrowerAadhar(formatted);
   };
-
-  // Sync default charged rate with tenure
-  useEffect(() => {
-    if (type === 'outer') {
-      if (totalMonths === 6 && (chargedRate === '16' || !chargedRate)) {
-        setChargedRate('8');
-      } else if (totalMonths === 12 && (chargedRate === '8' || !chargedRate)) {
-        setChargedRate('16');
-      }
-    }
-  }, [totalMonths, type]);
 
   if (!isOpen || !currentUser) return null;
 
@@ -93,6 +84,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
         documents
       });
 
+      if (!createdLoan) return;
       alert(
         type === 'self'
           ? `Self Loan #${createdLoan.id} for ₹${numPrincipal.toLocaleString()} (${totalMonths} Months) disbursed instantly!`
@@ -100,7 +92,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
       );
     } else {
       // Submit as request
-      submitLoanRequest({
+      const request = submitLoanRequest({
         type,
         borrowerName: bName,
         borrowerPhone: type === 'self' ? currentUser.phone : borrowerPhone,
@@ -113,6 +105,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
         note
       });
 
+      if (!request) return;
       alert(
         type === 'self'
           ? `Aapka ₹${numPrincipal.toLocaleString()} ke personal loan ka aavedan (${totalMonths} mahine) committee ko bhej diya gaya hai!`
@@ -124,7 +117,7 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <Modal onClose={onClose} label="Request a loan" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
@@ -216,10 +209,10 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
           {type === 'outer' ? (
             <>
               <div>
-                <label className="text-slate-300 font-semibold block mb-1">
+                <label htmlFor="memberloanrequestmodal-field-1" className="text-slate-300 font-semibold block mb-1">
                   Outsider Full Name (क़र्ज़दार का नाम):
                 </label>
-                <input
+                <input id="memberloanrequestmodal-field-1"
                   type="text"
                   required
                   placeholder="e.g. Ramesh Kumar"
@@ -231,10 +224,10 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">
+                  <label htmlFor="memberloanrequestmodal-field-2" className="text-slate-300 font-semibold block mb-1">
                     Mobile Number:
                   </label>
-                  <input
+                  <input id="memberloanrequestmodal-field-2"
                     type="tel"
                     placeholder="98xxxxxx"
                     value={borrowerPhone}
@@ -243,10 +236,10 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
                   />
                 </div>
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">
+                  <label htmlFor="memberloanrequestmodal-field-3" className="text-slate-300 font-semibold block mb-1">
                     Address / Gaon:
                   </label>
-                  <input
+                  <input id="memberloanrequestmodal-field-3"
                     type="text"
                     placeholder="e.g. Ward 4"
                     value={borrowerAddress}
@@ -369,10 +362,10 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
 
           {/* Reason / Note */}
           <div>
-            <label className="text-slate-300 font-semibold block mb-1">
+            <label htmlFor="memberloanrequestmodal-field-4" className="text-slate-300 font-semibold block mb-1">
               Uddeshya / Note (Optional):
             </label>
-            <input
+            <input id="memberloanrequestmodal-field-4"
               type="text"
               placeholder="e.g. Medical / Dukaan / Kheti"
               value={note}
@@ -466,6 +459,6 @@ export default function MemberLoanRequestModal({ isOpen, onClose }) {
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

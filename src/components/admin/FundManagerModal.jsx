@@ -1,13 +1,14 @@
+import Modal from '../common/Modal';
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { formatINR } from '../../utils/loanCalculator';
-import { Wallet, TrendingUp, AlertTriangle, ArrowRight, CheckCircle2, Sparkles } from 'lucide-react';
+import { Wallet, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
 
 export default function FundManagerModal({ isOpen, onClose }) {
   const {
     getMeetingStats,
     availableCashFund,
-    setAvailableCashFund,
+    members,
     loanRequests,
     monthlyUnit,
     setMonthlyUnit,
@@ -25,7 +26,7 @@ export default function FundManagerModal({ isOpen, onClose }) {
 
   // Smart adjustment calculation:
   // If there's a deficit, how much extra should each of the 15 members invest this month?
-  const suggestedExtraPerMember = fundDeficit > 0 ? Math.ceil(fundDeficit / 15 / 500) * 500 : 0;
+  const suggestedExtraPerMember = fundDeficit > 0 ? Math.ceil(fundDeficit / Math.max(1, members.length) / 500) * 500 : 0;
   const newSuggestedUnit = monthlyUnit + suggestedExtraPerMember;
 
   const [customUnit, setCustomUnit] = useState(monthlyUnit);
@@ -33,13 +34,17 @@ export default function FundManagerModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const handleApplyNewUnit = () => {
+    if (!isSuperAdmin || !Number.isFinite(Number(customUnit)) || Number(customUnit) < 0) {
+      alert('Enter a valid non-negative monthly contribution.');
+      return;
+    }
     setMonthlyUnit(Number(customUnit));
     alert(`Monthly investment unit updated to ₹${Number(customUnit).toLocaleString()} per member.`);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <Modal onClose={onClose} label="Fund and liquidity manager" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
@@ -212,7 +217,7 @@ export default function FundManagerModal({ isOpen, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 

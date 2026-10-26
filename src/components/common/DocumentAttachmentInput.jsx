@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useId } from 'react';
 import { processFileAttachment } from '../../utils/fileUtils';
 import DocumentViewerModal from './DocumentViewerModal';
 import { Paperclip, Plus, Trash2, Eye, FileText, Image as ImageIcon, Loader2 } from 'lucide-react';
@@ -16,6 +16,7 @@ export default function DocumentAttachmentInput({ documents = [], onChange }) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [viewingDoc, setViewingDoc] = useState(null);
   const fileInputRef = useRef(null);
+  const fileInputId = useId();
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -48,7 +49,7 @@ export default function DocumentAttachmentInput({ documents = [], onChange }) {
       </div>
 
       <div className="flex gap-2 items-center">
-        <select
+        <select aria-label="Document category"
           value={selectedLabel}
           onChange={(e) => setSelectedLabel(e.target.value)}
           className="flex-1 bg-slate-900 border border-slate-800 rounded-xl p-2 text-[11px] text-white focus:outline-none focus:border-indigo-500"
@@ -61,10 +62,10 @@ export default function DocumentAttachmentInput({ documents = [], onChange }) {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*,application/pdf"
+          accept="image/jpeg,image/png,image/webp,application/pdf"
           onChange={handleFileChange}
           className="hidden"
-          id="doc-file-input"
+          id={fileInputId}
         />
 
         <button

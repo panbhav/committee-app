@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { useApp } from '../../context/AppContext';
+import Modal from '../common/Modal';
+import React, { useState } from 'react';
+import { useApp } from '../../context/useApp';
 import { calculateKisht, calculateSecurityFee, getStandardRate, formatINR } from '../../utils/loanCalculator';
 import DocumentAttachmentInput from '../common/DocumentAttachmentInput';
-import { X, Sparkles, AlertTriangle, CheckCircle2, Clock, Percent } from 'lucide-react';
+import { X, Sparkles, AlertTriangle, Clock, Percent } from 'lucide-react';
 
 export default function DisburseLoanModal({ isOpen, onClose }) {
   const { members, disburseLoan, getMemberLimits, t } = useApp();
@@ -15,24 +16,14 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
   const [documents, setDocuments] = useState([]);
   const [guarantor, setGuarantor] = useState(members[0]?.name || 'AVNISH');
   const [principal, setPrincipal] = useState('100000');
-  const [chargedRate, setChargedRate] = useState('16');
+  const [customChargedRate, setChargedRate] = useState('');
+  const chargedRate = customChargedRate || String(getStandardRate(type, totalMonths));
 
   const handleAadharChange = (e) => {
     const raw = e.target.value.replace(/\D/g, '').slice(0, 12);
     const formatted = raw.replace(/(\d{4})(?=\d)/g, '$1 ');
     setBorrowerAadhar(formatted);
   };
-
-  // Keep default charged rate in sync with duration
-  useEffect(() => {
-    if (type === 'outer') {
-      if (totalMonths === 6 && (chargedRate === '16' || !chargedRate)) {
-        setChargedRate('8');
-      } else if (totalMonths === 12 && (chargedRate === '8' || !chargedRate)) {
-        setChargedRate('16');
-      }
-    }
-  }, [totalMonths, type]);
 
   if (!isOpen) return null;
 
@@ -93,6 +84,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
       documents
     });
 
+    if (!createdLoan) return;
     if (type === 'outer') {
       const appUrl = window.location.href.split('?')[0].split('#')[0];
       const shareMsg = `Namaste ${borrowerName} ji! Aapka ₹${numPrincipal.toLocaleString()} ka Banking Society loan pass ho gaya hai (Loan Account #${createdLoan.id}). Aapki monthly kisht ₹${outsiderKisht.toLocaleString()} hai (${totalMonths} mahine, har mahine ki 10 tareekh tak deya, Byaz Dar: ${numChargedRate}%). Apni digital passbook dekhne ke liye is link par apna phone number ya Loan #${createdLoan.id} daalein: ${appUrl}`;
@@ -106,7 +98,7 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <Modal onClose={onClose} label="Disburse a loan" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3">
           <div>
@@ -229,10 +221,10 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
           {/* Phone (for Outer Loans) */}
           {type === 'outer' && (
             <div>
-              <label className="text-slate-300 font-semibold block mb-1">
+              <label htmlFor="disburseloanmodal-field-1" className="text-slate-300 font-semibold block mb-1">
                 Borrower Mobile Number (for WhatsApp / Passbook):
               </label>
-              <input
+              <input id="disburseloanmodal-field-1"
                 type="tel"
                 placeholder="e.g. 9876543210"
                 value={borrowerPhone}
@@ -429,6 +421,6 @@ export default function DisburseLoanModal({ isOpen, onClose }) {
           </div>
         </form>
       </div>
-    </div>
+    </Modal>
   );
 }

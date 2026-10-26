@@ -1,3 +1,4 @@
+import { distributeRupees } from '../src/utils/validation.js';
 import { INITIAL_MEMBERS, INITIAL_LOANS } from '../src/data/initialData.js';
 import { calculateKisht, calculateSecurityFee, getStandardRate } from '../src/utils/loanCalculator.js';
 
@@ -68,8 +69,6 @@ INITIAL_MEMBERS.forEach(m => {
 
   const selfUsed = selfLoans.reduce((s, l) => s + l.principal, 0);
   const outerUsed = outerLoans.reduce((s, l) => s + l.principal, 0);
-  const selfLeft = Math.max(0, m.memberLimit - selfUsed);
-  const outerLeft = Math.max(0, m.outerLimit - outerUsed);
 
   const selfExceeded = selfUsed > m.memberLimit;
   const outerExceeded = outerUsed > m.outerLimit;
@@ -87,12 +86,12 @@ const activeOuterLoans = INITIAL_LOANS.filter(l => l.type === 'outer');
 
 const totalSelfPrincipal = activeSelfLoans.reduce((s, l) => s + l.principal, 0);
 const totalOuterPrincipal = activeOuterLoans.reduce((s, l) => s + l.principal, 0);
-const totalLoansDisbursed = totalSelfPrincipal + totalOuterPrincipal;
 
 const selfPool7Pct = Math.round(totalSelfPrincipal * 0.07);
 const outerPool7Pct = Math.round(totalOuterPrincipal * 0.07);
 const totalCommonPool = selfPool7Pct + outerPool7Pct;
-const perMemberDividend = Math.round(totalCommonPool / 15);
+const dividends = distributeRupees(totalCommonPool, INITIAL_MEMBERS.length);
+const perMemberDividend = Math.min(...dividends);
 
 console.log(`Total Self Loans: ₹${totalSelfPrincipal.toLocaleString()} -> 7% Pool Return: ₹${selfPool7Pct.toLocaleString()}`);
 console.log(`Total Outer Loans: ₹${totalOuterPrincipal.toLocaleString()} -> 7% Pool Return: ₹${outerPool7Pct.toLocaleString()}`);
@@ -102,20 +101,20 @@ console.log(`Per Member Dividend (1/15th of pool): ₹${perMemberDividend.toLoca
 let totalGuarantorCommissionAll = 0;
 let totalPayoutAll = 0;
 
-INITIAL_MEMBERS.forEach(m => {
+INITIAL_MEMBERS.forEach((m, index) => {
   const guaranteedOuter = activeOuterLoans
     .filter(l => l.guarantor === m.name)
     .reduce((s, l) => s + l.principal, 0);
   const comm = Math.round(guaranteedOuter * 0.06);
-  const payout = perMemberDividend + comm;
+  const payout = dividends[index] + comm;
   totalGuarantorCommissionAll += comm;
   totalPayoutAll += payout;
 
-  console.log(`  ${m.name.padEnd(12)} | Guaranteed Outer: ₹${guaranteedOuter.toLocaleString().padStart(8)} | 6% Comm: ₹${comm.toLocaleString().padStart(6)} | Dividend: ₹${perMemberDividend.toLocaleString()} | Total Payout: ₹${payout.toLocaleString().padStart(7)}`);
+  console.log(`  ${m.name.padEnd(12)} | Guaranteed Outer: ₹${guaranteedOuter.toLocaleString().padStart(8)} | 6% Comm: ₹${comm.toLocaleString().padStart(6)} | Dividend: ₹${dividends[index].toLocaleString()} | Total Payout: ₹${payout.toLocaleString().padStart(7)}`);
 });
 
 console.log('-------------------------------------------------------------------------');
-console.log(`TOTALS | 6% Commissions: ₹${totalGuarantorCommissionAll.toLocaleString()} | Member Dividends (15x): ₹${(perMemberDividend * 15).toLocaleString()} | Total February Payouts: ₹${totalPayoutAll.toLocaleString()}`);
+console.log(`TOTALS | 6% Commissions: ₹${totalGuarantorCommissionAll.toLocaleString()} | Member Dividends (15x): ₹${dividends.reduce((a, b) => a + b, 0).toLocaleString()} | Total February Payouts: ₹${totalPayoutAll.toLocaleString()}`);
 
 // 5. TEST 6-MONTH LOAN MATH
 console.log('\n--- 5. Testing 6-Month vs 12-Month Tenures ---');
@@ -141,3 +140,5 @@ console.log(`Guarantor monthly profit margin: ₹${margin}/mo`);
 
 console.log('\n=== SUITE EXECUTION SUMMARY ===');
 console.log(`Total Errors Detected: ${issuesFound}`);
+
+process.exitCode = issuesFound > 0 ? 1 : 0;

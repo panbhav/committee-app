@@ -1,7 +1,8 @@
+import Modal from '../common/Modal';
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import DocumentViewerModal from '../common/DocumentViewerModal';
-import { Check, X, Clock, AlertCircle, Sparkles, Paperclip, Eye } from 'lucide-react';
+import { Check, X, AlertCircle, Sparkles, Paperclip, Eye } from 'lucide-react';
 import { formatINR } from '../../utils/loanCalculator';
 
 export default function PendingLoanRequestsModal({ isOpen, onClose }) {
@@ -13,7 +14,7 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
   const pendingList = loanRequests.filter(r => r.status === 'pending');
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+    <Modal onClose={onClose} label="Pending loan requests" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
         <div className="flex justify-between items-center border-b border-slate-800 pb-3 flex-shrink-0">
           <div>
@@ -162,6 +163,6 @@ export default function PendingLoanRequestsModal({ isOpen, onClose }) {
       {viewingDoc && (
         <DocumentViewerModal doc={viewingDoc} onClose={() => setViewingDoc(null)} />
       )}
-    </div>
+    </Modal>
   );
 }

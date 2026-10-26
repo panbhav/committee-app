@@ -1,11 +1,12 @@
+import Modal from './Modal';
 import React from 'react';
-import { X, Download, FileText, ExternalLink } from 'lucide-react';
+import { X, Download, FileText } from 'lucide-react';
 
 export default function DocumentViewerModal({ doc, onClose }) {
   if (!doc) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
+    <Modal onClose={onClose} label="Document preview" className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
       <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-4 shadow-2xl space-y-3 max-h-[90vh] flex flex-col">
         <div className="flex justify-between items-center border-b border-slate-800 pb-2.5">
           <div className="flex items-center gap-2">
@@ -59,6 +60,6 @@ export default function DocumentViewerModal({ doc, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

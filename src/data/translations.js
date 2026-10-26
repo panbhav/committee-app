@@ -30,11 +30,11 @@ export const translations = {
     tabAnnual: "Annual Feb",
 
     // Meeting Screen
-    meetingCashflow: "September Meeting Cashflow",
+    meetingCashflow: "Meeting cashflow",
     totalExpectedCollection: "Total Expected Monthly Collection",
     collectedSoFar: "Collected So Far",
     pendingRecovery: "Pending Recovery",
-    markAllPaid: "One-Tap: Mark All 15 as Paid",
+    markAllPaid: "Mark all members as paid",
     downloadExcel: "Download Excel Bahikhata",
     downloadPDF: "Download PDF Report",
     searchMemberPlaceholder: "Search member name (e.g. Harish, Manoj)...",
@@ -212,11 +212,11 @@ export const translations = {
     tabAnnual: "सालाना फ़रवरी",
 
     // Meeting Screen
-    meetingCashflow: "सितंबर मीटिंग वसूली खाता",
+    meetingCashflow: "मीटिंग वसूली खाता",
     totalExpectedMonthlyCollection: "इस महीने की कुल अपेक्षित वसूली",
     collectedSoFar: "अब तक जमा हुई",
     pendingRecovery: "बाकी वसूली",
-    markAllPaid: "एक क्लिक: सभी 15 को 'पूर्ण जमा' करें",
+    markAllPaid: "सभी सदस्यों को 'पूर्ण जमा' करें",
     downloadExcel: "एक्सेल बहीखाता डाउनलोड करें",
     downloadPDF: "PDF रसीद डाउनलोड करें",
     searchMemberPlaceholder: "सदस्य का नाम खोजें (जैसे: हरीश, मनोज)...",

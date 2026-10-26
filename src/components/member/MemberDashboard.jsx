@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { formatINR, getLoanTimeline } from '../../utils/loanCalculator';
 import { exportToExcel, exportToPDF } from '../../utils/exportUtils';
 import DocumentViewerModal from '../common/DocumentViewerModal';
 import DocumentAttachmentInput from '../common/DocumentAttachmentInput';
 import KishtProgressStepper from '../common/KishtProgressStepper';
-import { UserCheck, Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown, Calendar, Paperclip, Eye, Plus, X } from 'lucide-react';
+import { Shield, ChevronRight, MessageSquare, CheckCircle, Clock, FileSpreadsheet, FileDown, Calendar, Paperclip, Eye, Plus, X } from 'lucide-react';
 
 
 export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahikhata }) {
   const { currentUser, getMemberBill, getMemberLimits, payments, loans, members, meetingMonth, meetingDate, AVAILABLE_MONTHS, changeMeetingMonth, updateLoanDocuments, t } = useApp();
   const [viewingDoc, setViewingDoc] = useState(null);
   const [attachDocLoan, setAttachDocLoan] = useState(null);
+  const [activeSubTab, setActiveSubTab] = useState('outer');
 
   const handleExportExcel = () => {
     exportToExcel({ members, loans, payments, meetingMonth, getMemberBill, getMemberLimits });
@@ -30,7 +31,6 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
   const p = payments[currentUser.id] || { status: 'pending' };
   const isPaid = p.status === 'paid';
 
-  const [activeSubTab, setActiveSubTab] = useState('outer'); // 'outer' | 'self'
 
   const selfPercent = Math.min(100, Math.round((limits.selfUsed / limits.memberLimit) * 100));
   const outerPercent = Math.min(100, Math.round((limits.outerUsed / limits.outerLimit) * 100));
@@ -208,7 +208,7 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
             ) : (
               bill.outerLoans.map(l => {
                 const totalM = l.totalMonths || 12;
-                const timeline = getLoanTimeline(l.currentMonth, totalM);
+                const timeline = getLoanTimeline(l.currentMonth, totalM, meetingMonth);
                 const outsiderKisht = l.outsiderMonthlyKisht || l.monthlyKisht;
                 const margin = Math.max(0, outsiderKisht - l.monthlyKisht);
                 return (
@@ -315,7 +315,7 @@ export default function MemberDashboard({ onOpenNewLoan, onOpenLogs, onOpenBahik
             ) : (
               bill.selfLoans.map(l => {
                 const totalM = l.totalMonths || 12;
-                const timeline = getLoanTimeline(l.currentMonth, totalM);
+                const timeline = getLoanTimeline(l.currentMonth, totalM, meetingMonth);
                 const selfRate = l.rate || (totalM === 6 ? 5 : 10);
                 return (
                   <div

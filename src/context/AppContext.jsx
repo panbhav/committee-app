@@ -1,82 +1,46 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { projectLoansForMonth } from '../utils/loanProjection';
+import React, { useState, useEffect, useRef } from 'react';
 import { INITIAL_MEMBERS, INITIAL_LOANS, AVAILABLE_MONTHS } from '../data/initialData';
 import { translations } from '../data/translations';
 import { calculateKisht, calculateSecurityFee, getStandardRate } from '../utils/loanCalculator';
-import { db, doc, setDoc, onSnapshot } from '../services/firebase';
+import { db, auth, doc, setDoc, onSnapshot } from '../services/firebase';
+import { readStoredJSON, isRecord, clearAppStorage, writeStoredValue } from '../utils/storage';
+import { loanInputError, paymentInputError, undoError, distributeRupees } from '../utils/validation';
+import { CLOUD_SYNC_ENABLED } from '../config';
 
-// Filter out non-financial, navigational, or irrelevant system noise from audit logs
-export const isRelevantAuditLog = (log) => {
-  if (!log || typeof log !== 'object' || !log.action) return false;
-  const noisyActions = [
-    'MONTH_CHANGED',
-    'MEETING_OPENED',
-    'MEETING_CONCLUDED',
-    'FUND_HEALTH_CHECK'
-  ];
-  if (noisyActions.includes(log.action)) return false;
-
-  const details = (log.details || '').toLowerCase();
-  if (
-    details.includes('switched meeting month') ||
-    details.includes('meeting in session') ||
-    details.includes('meeting completed') ||
-    details.includes('liquidity check')
-  ) {
-    return false;
-  }
-  return true;
-};
-
-const AppContext = createContext();
+import { AppContext, isRelevantAuditLog } from './appStore';
 
 export function AppProvider({ children }) {
-  const [cloudSyncStatus, setCloudSyncStatus] = useState('connecting'); // 'connected' | 'offline' | 'connecting'
+  const [cloudSyncStatus, setCloudSyncStatus] = useState(CLOUD_SYNC_ENABLED ? 'connecting' : 'local'); // 'connected' | 'offline' | 'connecting'
   // Language: 'hi' (Hindi) or 'en' (English)
   const [lang, setLang] = useState(() => {
     return localStorage.getItem('comm_lang') || 'hi'; // Default Hindi for user-friendliness!
   });
 
   const t = translations[lang] || translations.en;
+  useEffect(() => { document.documentElement.lang = lang === 'hi' ? 'hi' : 'en'; }, [lang]);
 
   const setLanguage = (newLang) => {
     setLang(newLang);
-    localStorage.setItem('comm_lang', newLang);
+    writeStoredValue('comm_lang', newLang);
   };
 
   const toggleLanguage = () => {
     setLang(prev => {
       const next = prev === 'hi' ? 'en' : 'hi';
-      localStorage.setItem('comm_lang', next);
+      writeStoredValue('comm_lang', next);
       return next;
     });
   };
 
-  // Automatic cache cleanup if schema/data version changed (purges test data)
   const DATA_VERSION = 'v2_clean_sep2026';
-  if (typeof window !== 'undefined' && localStorage.getItem('comm_app_data_version') !== DATA_VERSION) {
-    localStorage.removeItem('comm_members');
-    localStorage.removeItem('comm_loans');
-    localStorage.removeItem('comm_payments');
-    localStorage.removeItem('comm_loan_requests');
-    localStorage.removeItem('comm_audit_logs');
-    localStorage.removeItem('comm_monthly_unit');
-    localStorage.removeItem('comm_cash_fund');
-    localStorage.removeItem('comm_meeting_month');
-    localStorage.removeItem('comm_meeting_date');
-    localStorage.setItem('comm_app_data_version', DATA_VERSION);
-  }
 
   // Persistence via localStorage
   const [members, setMembers] = useState(() => {
-    const saved = localStorage.getItem('comm_members');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      return parsed.map(m => {
-        const initial = INITIAL_MEMBERS.find(im => im.id === m.id);
-        return initial ? { ...m, phone: initial.phone, role: initial.role } : m;
-      });
-    }
-    return INITIAL_MEMBERS;
+    return readStoredJSON('comm_members', INITIAL_MEMBERS, Array.isArray).map(m => {
+      const initial = INITIAL_MEMBERS.find(im => im.id === m.id);
+      return initial ? { ...m, phone: initial.phone, role: initial.role } : m;
+    });
   });
 
 
@@ -91,32 +55,7 @@ export function AppProvider({ children }) {
   });
 
   // Helper to compute default loans for any given month based on monthly timeline offset
-  const computeDefaultLoansForMonth = (targetMonth, currentLoansByMonth = null) => {
-    if (currentLoansByMonth && currentLoansByMonth[targetMonth]) {
-      return currentLoansByMonth[targetMonth];
-    }
-
-    const baseMonth = 'September 2026';
-    const baseLoans = (currentLoansByMonth && currentLoansByMonth[baseMonth]) || INITIAL_LOANS;
-
-    const baseIdx = AVAILABLE_MONTHS.indexOf(baseMonth);
-    const targetIdx = AVAILABLE_MONTHS.indexOf(targetMonth);
-
-    if (baseIdx === -1 || targetIdx === -1) {
-      return baseLoans;
-    }
-
-    const monthOffset = targetIdx - baseIdx; // e.g. Oct 2026 (9 - 8 = +1 month)
-
-    return baseLoans.map(l => {
-      const totalM = l.totalMonths || 12;
-      const newCurrent = Math.max(1, Math.min(totalM, (l.currentMonth || 1) + monthOffset));
-      return {
-        ...l,
-        currentMonth: newCurrent
-      };
-    });
-  };
+  const computeDefaultLoansForMonth = (targetMonth, saved = null) => projectLoansForMonth(targetMonth, saved, AVAILABLE_MONTHS, INITIAL_LOANS);
 
   // Loans stored per month so all historical & future months are preserved with automatic default kisht progression
   const [loansByMonth, setLoansByMonth] = useState(() => {
@@ -124,11 +63,11 @@ export function AppProvider({ children }) {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === 'object') return parsed;
-      } catch (e) {}
+        if (isRecord(parsed) && Object.values(parsed).every(Array.isArray)) return parsed;
+      } catch {}
     }
     const legacy = localStorage.getItem('comm_loans');
-    const initialSep = legacy ? JSON.parse(legacy) : INITIAL_LOANS;
+    const initialSep = legacy ? readStoredJSON('comm_loans', INITIAL_LOANS, Array.isArray) : INITIAL_LOANS;
     return {
       'September 2026': initialSep
     };
@@ -141,31 +80,31 @@ export function AppProvider({ children }) {
     if (savedByMonth) {
       try {
         const parsed = JSON.parse(savedByMonth);
-        if (parsed[currentMonth]) return parsed[currentMonth];
-        return computeDefaultLoansForMonth(currentMonth, parsed);
-      } catch (e) {}
+        if (isRecord(parsed) && parsed[currentMonth]) return parsed[currentMonth];
+        return computeDefaultLoansForMonth(currentMonth, isRecord(parsed) ? parsed : null);
+      } catch {}
     }
     const saved = localStorage.getItem('comm_loans');
-    if (saved && currentMonth === 'September 2026') return JSON.parse(saved);
+    if (saved && currentMonth === 'September 2026') return readStoredJSON('comm_loans', INITIAL_LOANS, Array.isArray);
     return computeDefaultLoansForMonth(currentMonth, { 'September 2026': INITIAL_LOANS });
   });
 
   const [monthlyUnit, setMonthlyUnit] = useState(() => {
     const saved = localStorage.getItem('comm_monthly_unit');
-    return saved ? Number(saved) : 1000;
+    return saved !== null && Number.isFinite(Number(saved)) && Number(saved) >= 0 ? Number(saved) : 1000;
   });
 
   // Cash Reserve / Opening Balance in committee bank or safe
   const [availableCashFund, setAvailableCashFund] = useState(() => {
     const saved = localStorage.getItem('comm_cash_fund');
-    return saved ? Number(saved) : 150000; // default ₹1.5L reserve
+    return saved !== null && Number.isFinite(Number(saved)) && Number(saved) >= 0 ? Number(saved) : 150000; // default ₹1.5L reserve
   });
 
   // Annual February Meeting Loan Totals Configuration
   const [annualMeetingConfig, setAnnualMeetingConfig] = useState(() => {
     const saved = localStorage.getItem('comm_annual_meeting_config');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { const parsed = JSON.parse(saved); if (isRecord(parsed)) return parsed; } catch {}
     }
     return {
       useCustomTotals: false,
@@ -193,10 +132,10 @@ export function AppProvider({ children }) {
   const [paymentsByMonth, setPaymentsByMonth] = useState(() => {
     const saved = localStorage.getItem('comm_payments_by_month');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) {}
+      try { const parsed = JSON.parse(saved); if (isRecord(parsed)) return parsed; } catch {}
     }
     const legacy = localStorage.getItem('comm_payments');
-    const initialSep = legacy ? JSON.parse(legacy) : defaultPendingPayments();
+    const initialSep = legacy ? readStoredJSON('comm_payments', defaultPendingPayments(), isRecord) : defaultPendingPayments();
     return {
       'September 2026': initialSep
     };
@@ -209,16 +148,16 @@ export function AppProvider({ children }) {
     if (savedByMonth) {
       try {
         const parsed = JSON.parse(savedByMonth);
-        if (parsed[currentMonth]) return parsed[currentMonth];
-      } catch (e) {}
+        if (isRecord(parsed) && parsed[currentMonth]) return parsed[currentMonth];
+      } catch {}
     }
     const saved = localStorage.getItem('comm_payments');
-    if (saved) return JSON.parse(saved);
+    if (saved && currentMonth === 'September 2026') return readStoredJSON('comm_payments', defaultPendingPayments(), isRecord);
     return defaultPendingPayments();
   });
 
   // Full Activity / Audit Log: [{ id, timestamp, actor, action, details, previousState, targetMemberId }]
-  const [auditLogs, setAuditLogs] = useState(() => {
+  const [auditLogs, setAuditLogsState] = useState(() => {
     const saved = localStorage.getItem('comm_audit_logs');
     if (saved) {
       try {
@@ -226,7 +165,7 @@ export function AppProvider({ children }) {
         if (Array.isArray(parsed)) {
           return parsed.filter(isRelevantAuditLog);
         }
-      } catch (e) {}
+      } catch {}
     }
     return [
       {
@@ -240,80 +179,96 @@ export function AppProvider({ children }) {
     ];
   });
 
+  const auditLogsRef = useRef(auditLogs);
+  const setAuditLogs = next => {
+    const value = typeof next === 'function' ? next(auditLogsRef.current) : next;
+    auditLogsRef.current = value;
+    setAuditLogsState(value);
+  };
+
   // Member Loan Requests: [{ id, requestedBy, type, borrowerName, borrowerPhone, borrowerAddress, principal, monthlyKisht, securityFee, note, status: 'pending'|'approved'|'rejected', timestamp }]
   const [loanRequests, setLoanRequests] = useState(() => {
     const saved = localStorage.getItem('comm_loan_requests');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? readStoredJSON('comm_loan_requests', [], Array.isArray) : [];
   });
 
   // Current Active User
   const [currentUser, setCurrentUser] = useState(() => {
-    return INITIAL_MEMBERS.find(m => m.name === 'NARENDRA') || INITIAL_MEMBERS[0];
+    const saved = readStoredJSON('comm_current_user', null);
+    return saved ? members.find(m => m.id === saved.id) || null : null;
   });
 
   // Current Selected Outer Borrower
-  const [currentOuterLoanId, setCurrentOuterLoanId] = useState(408);
+  const [currentOuterLoanId, setCurrentOuterLoanId] = useState(() => readStoredJSON('comm_outer_loan_id', null));
 
   useEffect(() => {
-    localStorage.setItem('comm_loan_requests', JSON.stringify(loanRequests));
+    writeStoredValue('comm_current_user', JSON.stringify(currentUser));
+    writeStoredValue('comm_outer_loan_id', JSON.stringify(currentOuterLoanId));
+  }, [currentUser, currentOuterLoanId]);
+
+  useEffect(() => {
+    writeStoredValue('comm_loan_requests', JSON.stringify(loanRequests));
   }, [loanRequests]);
 
   useEffect(() => {
-    localStorage.setItem('comm_members', JSON.stringify(members));
+    writeStoredValue('comm_members', JSON.stringify(members));
   }, [members]);
 
   useEffect(() => {
-    localStorage.setItem('comm_loans', JSON.stringify(loans));
+    writeStoredValue('comm_loans', JSON.stringify(loans));
   }, [loans]);
 
   useEffect(() => {
-    localStorage.setItem('comm_monthly_unit', monthlyUnit.toString());
+    writeStoredValue('comm_monthly_unit', monthlyUnit.toString());
   }, [monthlyUnit]);
 
   useEffect(() => {
-    localStorage.setItem('comm_cash_fund', availableCashFund.toString());
+    writeStoredValue('comm_cash_fund', availableCashFund.toString());
   }, [availableCashFund]);
 
   useEffect(() => {
-    localStorage.setItem('comm_meeting_month', meetingMonth);
+    writeStoredValue('comm_meeting_month', meetingMonth);
   }, [meetingMonth]);
 
   useEffect(() => {
-    localStorage.setItem('comm_meeting_date', meetingDate);
+    writeStoredValue('comm_meeting_date', meetingDate);
   }, [meetingDate]);
 
   useEffect(() => {
-    localStorage.setItem('comm_loans_by_month', JSON.stringify(loansByMonth));
+    writeStoredValue('comm_loans_by_month', JSON.stringify(loansByMonth));
   }, [loansByMonth]);
 
   useEffect(() => {
-    localStorage.setItem('comm_payments_by_month', JSON.stringify(paymentsByMonth));
+    writeStoredValue('comm_payments_by_month', JSON.stringify(paymentsByMonth));
   }, [paymentsByMonth]);
 
   useEffect(() => {
-    localStorage.setItem('comm_payments', JSON.stringify(payments));
+    writeStoredValue('comm_payments', JSON.stringify(payments));
   }, [payments]);
 
   useEffect(() => {
-    localStorage.setItem('comm_audit_logs', JSON.stringify(auditLogs));
+    writeStoredValue('comm_audit_logs', JSON.stringify(auditLogs));
   }, [auditLogs]);
 
   useEffect(() => {
-    localStorage.setItem('comm_annual_meeting_config', JSON.stringify(annualMeetingConfig));
+    writeStoredValue('comm_annual_meeting_config', JSON.stringify(annualMeetingConfig));
   }, [annualMeetingConfig]);
 
   // Push state updates to Firebase Firestore
   const syncToCloud = async (patch) => {
+    if (!CLOUD_SYNC_ENABLED || !db || !auth?.currentUser) return;
     try {
       const docRef = doc(db, 'committee', 'global_state');
       await setDoc(docRef, patch, { merge: true });
     } catch (err) {
+      setCloudSyncStatus('offline');
       console.warn('Sync to cloud warning:', err);
     }
   };
 
   // Real-time Cloud Firestore Listener (Live Multi-Device Sync)
   useEffect(() => {
+    if (!CLOUD_SYNC_ENABLED || !db || !auth?.currentUser) return;
     const docRef = doc(db, 'committee', 'global_state');
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -352,9 +307,7 @@ export function AppProvider({ children }) {
         if (d.auditLogs && Array.isArray(d.auditLogs)) {
           const cleanLogs = d.auditLogs.filter(isRelevantAuditLog);
           setAuditLogs(cleanLogs);
-          if (cleanLogs.length !== d.auditLogs.length) {
-            setDoc(docRef, { auditLogs: cleanLogs }, { merge: true }).catch(() => {});
-          }
+
         }
         if (d.loanRequests && Array.isArray(d.loanRequests)) setLoanRequests(d.loanRequests);
         if (d.monthlyUnit !== undefined) setMonthlyUnit(d.monthlyUnit);
@@ -365,21 +318,7 @@ export function AppProvider({ children }) {
         }
         setCloudSyncStatus('connected');
       } else {
-        // First-time seed of initial September committee data into cloud
-        const initialSeed = {
-          members: INITIAL_MEMBERS,
-          loans: INITIAL_LOANS,
-          payments,
-          paymentsByMonth,
-          auditLogs: auditLogs.filter(isRelevantAuditLog),
-          loanRequests,
-          monthlyUnit,
-          availableCashFund,
-          meetingMonth,
-          meetingDate
-        };
-        setDoc(docRef, initialSeed).catch(() => {});
-        setCloudSyncStatus('connected');
+        setCloudSyncStatus('offline');
       }
     }, (err) => {
       console.warn('Firestore real-time listener error:', err);
@@ -401,7 +340,9 @@ export function AppProvider({ children }) {
       rollbackData
     };
     if (isRelevantAuditLog(newEntry)) {
-      setAuditLogs(prev => [newEntry, ...prev.filter(isRelevantAuditLog)]);
+      const updatedLogs = [newEntry, ...auditLogsRef.current.filter(isRelevantAuditLog)];
+      setAuditLogs(updatedLogs);
+      syncToCloud({ auditLogs: updatedLogs });
     }
   };
 
@@ -526,19 +467,13 @@ export function AppProvider({ children }) {
     setPaymentsByMonth(updatedPaymentsByMonth);
     setLoansByMonth(updatedLoansByMonth);
 
-    // Note: Month browsing/navigation is a UI state and is NOT logged in financial audit logs.
-    syncToCloud({
-      meetingMonth: newMonth,
-      meetingDate: newDate,
-      payments: monthPayments,
-      paymentsByMonth: updatedPaymentsByMonth,
-      loans: monthLoans,
-      loansByMonth: updatedLoansByMonth
-    });
+    // Browsing a month is local UI state; it must not move another device's view.
+
   };
 
   // Mark a member as paid / unpaid with Undo & Audit Trail
   const toggleMemberPaid = (memberId) => {
+    if (!isSuperAdmin) return;
     const member = members.find(m => m.id === memberId);
     if (!member) return;
     const current = payments[memberId] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
@@ -554,6 +489,7 @@ export function AppProvider({ children }) {
         status: newStatus,
         deposit: newStatus === 'paid' ? bill.totalDue : 0,
         shortAmount: 0,
+        extraAmount: 0,
         paidAt: newStatus === 'paid' ? timestampNow : null,
         paidBy: newStatus === 'paid' ? actorName : null
       }
@@ -568,7 +504,7 @@ export function AppProvider({ children }) {
         ? `Marked ${member.name} as fully PAID (₹${bill.totalDue.toLocaleString()}) for ${meetingMonth}.`
         : `Reverted ${member.name} back to PENDING for ${meetingMonth}.`,
       canRollback: true,
-      rollbackData: { type: 'payment', memberId, previousState: current }
+      rollbackData: { type: 'payment', memberId, previousState: current, meetingMonth }
     };
 
     updateCurrentMonthPayments(updatedPayments, logEntry);
@@ -576,8 +512,11 @@ export function AppProvider({ children }) {
 
   // Record custom payment (partial / short) with Audit Trail
   const recordPartialPayment = (memberId, depositAmount, shortAmount, extraAmount) => {
+    if (!isSuperAdmin) return false;
     const member = members.find(m => m.id === memberId);
-    if (!member) return;
+    if (!member) return false;
+    const error = paymentInputError(getMemberBill(member.name).totalDue, depositAmount, shortAmount, extraAmount);
+    if (error) { alert(error); return false; }
     const current = payments[memberId] || { status: 'pending', shortAmount: 0, extraAmount: 0, deposit: 0 };
     const timestampNow = getFormattedTimestamp();
     const actorName = currentUser ? currentUser.name : 'ADMIN';
@@ -601,7 +540,7 @@ export function AppProvider({ children }) {
       action: 'RECORDED_PARTIAL',
       details: `Updated ${member.name} (${meetingMonth}): Deposit ₹${Number(depositAmount).toLocaleString()}${shortAmount > 0 ? `, Short ₹${shortAmount.toLocaleString()}` : ''}${extraAmount > 0 ? `, Extra ₹${extraAmount.toLocaleString()}` : ''}.`,
       canRollback: true,
-      rollbackData: { type: 'payment', memberId, previousState: current }
+      rollbackData: { type: 'payment', memberId, previousState: current, meetingMonth }
     };
 
     updateCurrentMonthPayments(updatedPayments, logEntry);
@@ -609,6 +548,7 @@ export function AppProvider({ children }) {
 
   // One-tap mark all paid with Audit Trail
   const markAllPaid = () => {
+    if (!isSuperAdmin) return;
     const timestampNow = getFormattedTimestamp();
     const actorName = currentUser ? currentUser.name : 'ADMIN';
     const previousPayments = { ...payments };
@@ -630,9 +570,9 @@ export function AppProvider({ children }) {
       timestamp: timestampNow,
       actor: actorName,
       action: 'MARKED_ALL_PAID',
-      details: `One-tap: Marked all 15 members as fully paid for ${meetingMonth}.`,
+      details: `One-tap: Marked all ${members.length} members as fully paid for ${meetingMonth}.`,
       canRollback: true,
-      rollbackData: { type: 'all_payments', previousPayments }
+      rollbackData: { type: 'all_payments', previousPayments, meetingMonth }
     };
 
     updateCurrentMonthPayments(newPayments, logEntry);
@@ -640,8 +580,9 @@ export function AppProvider({ children }) {
 
   // Rollback a past action from log
   const rollbackAction = (logEntry) => {
-    if (!logEntry.rollbackData) return;
-
+    if (!isSuperAdmin) return;
+    const error = undoError(logEntry, auditLogs, meetingMonth);
+    if (error) { alert(error); return; }
     if (logEntry.rollbackData.type === 'payment') {
       const { memberId, previousState } = logEntry.rollbackData;
       const updatedPayments = {
@@ -655,7 +596,11 @@ export function AppProvider({ children }) {
       addLog('ROLLBACK', `Undid: One-tap mark all paid. Restored previous states.`, false);
     } else if (logEntry.rollbackData.type === 'new_loan') {
       const { loanId } = logEntry.rollbackData;
-      setLoans(prev => prev.filter(l => l.id !== loanId));
+      const restored = loans.filter(l => l.id !== loanId);
+      const updatedByMonth = { ...loansByMonth, [meetingMonth]: restored };
+      setLoans(restored);
+      setLoansByMonth(updatedByMonth);
+      syncToCloud({ loans: restored, loansByMonth: updatedByMonth });
       addLog('ROLLBACK', `Cancelled loan #${loanId} and restored limits.`, false);
     } else if (logEntry.rollbackData.type === 'loan_kisht') {
       const { loanId, previousMonth, meetingMonth: targetMonth } = logEntry.rollbackData;
@@ -673,15 +618,20 @@ export function AppProvider({ children }) {
       addLog('ROLLBACK', `Undid Kisht update for loan #${loanId}. Restored to Month ${previousMonth}.`, false);
       syncToCloud({ loans: (monthToRoll === meetingMonth ? restored : loans), loansByMonth: updatedByMonth });
     }
+    const consumedLogs = auditLogsRef.current.map(log => log.id === logEntry.id ? { ...log, canRollback: false } : log);
+    setAuditLogs(consumedLogs);
+    syncToCloud({ auditLogs: consumedLogs });
   };
 
   // Update Kisht (Current Month / Remaining) for a specific loan with Audit Trail & Cloud Sync
   const updateLoanKisht = (loanId, newMonth) => {
+    if (!isSuperAdmin) return;
     const loan = loans.find(l => l.id === loanId);
     if (!loan) return;
 
     const totalM = loan.totalMonths || 12;
-    const clampedMonth = Math.max(1, Math.min(totalM, Number(newMonth)));
+    if (!Number.isFinite(Number(newMonth))) return;
+    const clampedMonth = Math.max(1, Math.min(totalM, Math.trunc(Number(newMonth))));
     const remaining = totalM - clampedMonth;
 
     const updatedLoans = loans.map(l => {
@@ -719,6 +669,7 @@ export function AppProvider({ children }) {
 
   // Smart Bulk Advance: increment currentMonth by +1 for all active loans
   const advanceAllActiveLoans = () => {
+    if (!isSuperAdmin) return;
     const updatedLoans = loans.map(l => {
       const totalM = l.totalMonths || 12;
       if (l.currentMonth < totalM) {
@@ -751,6 +702,7 @@ export function AppProvider({ children }) {
 
   // Smart Bulk Revert: decrement currentMonth by -1 for all active loans
   const revertAllActiveLoans = () => {
+    if (!isSuperAdmin) return;
     const updatedLoans = loans.map(l => {
       if (l.currentMonth > 1) {
         return { ...l, currentMonth: l.currentMonth - 1 };
@@ -780,17 +732,23 @@ export function AppProvider({ children }) {
     syncToCloud({ loans: updatedLoans, loansByMonth: updatedLoansByMonth, auditLogs: updatedLogs });
   };
 
+  const validateLoan = input => {
+    const memberName = String(input.type === 'self' ? input.borrowerName : input.guarantor).trim().toUpperCase();
+    const error = loanInputError(input, members, getMemberLimits(memberName));
+    if (error) { alert(error); return false; }
+    return true;
+  };
+
   // Submit a loan request by a member
   const submitLoanRequest = ({ type, borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, principal, note, totalMonths = 12, chargedRate = null, documents = [] }) => {
-    let finalPrincipal = Number(principal);
-    if (type === 'outer' && finalPrincipal > 100000) {
-      finalPrincipal = 100000;
-    }
+    if (!currentUser) return null;
+    const finalPrincipal = Number(principal);
+    if (!validateLoan({ type, principal: finalPrincipal, totalMonths, borrowerName, guarantor: currentUser.name, chargedRate })) return null;
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
     const kisht = calculateKisht(finalPrincipal, type, m);
     const security = calculateSecurityFee(finalPrincipal, type);
-    const effectiveChargedRate = (type === 'outer' && chargedRate && Number(chargedRate) > 0) ? Number(chargedRate) : standardRate;
+    const effectiveChargedRate = (type === 'outer' && chargedRate != null && Number(chargedRate) >= 0) ? Number(chargedRate) : standardRate;
     const outsiderKisht = (type === 'outer') ? calculateKisht(finalPrincipal, type, m, effectiveChargedRate) : kisht;
 
     const newRequest = {
@@ -822,15 +780,17 @@ export function AppProvider({ children }) {
       false
     );
     syncToCloud({ loanRequests: updatedRequests });
+    return newRequest;
   };
 
   // Approve loan request by Super Admin
   const approveLoanRequest = (requestId) => {
+    if (!isSuperAdmin) return;
     const req = loanRequests.find(r => r.id === requestId);
-    if (!req) return;
+    if (!req || req.status !== 'pending') return;
 
     // Disburse the actual loan
-    disburseLoan({
+    const createdLoan = disburseLoan({
       borrowerName: req.borrowerName,
       borrowerPhone: req.borrowerPhone,
       borrowerAddress: req.borrowerAddress,
@@ -843,6 +803,7 @@ export function AppProvider({ children }) {
       documents: req.documents || []
     });
 
+    if (!createdLoan) return;
     const updatedRequests = loanRequests.map(r => r.id === requestId ? { ...r, status: 'approved' } : r);
     setLoanRequests(updatedRequests);
     addLog('REQUEST_APPROVED', `Admin approved loan request for ${req.borrowerName} (₹${req.principal.toLocaleString()}).`, false);
@@ -851,8 +812,9 @@ export function AppProvider({ children }) {
 
   // Reject loan request by Super Admin
   const rejectLoanRequest = (requestId) => {
+    if (!isSuperAdmin) return;
     const req = loanRequests.find(r => r.id === requestId);
-    if (!req) return;
+    if (!req || req.status !== 'pending') return;
 
     const updatedRequests = loanRequests.map(r => r.id === requestId ? { ...r, status: 'rejected' } : r);
     setLoanRequests(updatedRequests);
@@ -862,15 +824,15 @@ export function AppProvider({ children }) {
 
   // Disburse a brand new loan with Audit Trail
   const disburseLoan = ({ borrowerName, borrowerPhone, borrowerAddress, borrowerAadhar, guarantor, type, principal, totalMonths = 12, chargedRate = null, documents = [] }) => {
-    const rawP = Number(principal);
-    const p = (type === 'outer' && rawP > 100000) ? 100000 : rawP;
+    if (!isSuperAdmin || !validateLoan({ type, principal, totalMonths, borrowerName, guarantor, chargedRate })) return null;
+    const p = Number(principal);
     const m = Number(totalMonths) || 12;
     const standardRate = getStandardRate(type, m);
     const kisht = calculateKisht(p, type, m);
     const security = calculateSecurityFee(p, type);
     const nextId = Math.max(...loans.map(l => l.id), 460) + 1;
 
-    const effectiveChargedRate = (type === 'outer' && chargedRate !== null && chargedRate !== undefined && Number(chargedRate) > 0)
+    const effectiveChargedRate = (type === 'outer' && chargedRate !== null && chargedRate !== undefined && Number(chargedRate) >= 0)
       ? Number(chargedRate)
       : standardRate;
     const outsiderKisht = (type === 'outer')
@@ -880,7 +842,7 @@ export function AppProvider({ children }) {
     const newLoan = {
       id: nextId,
       borrowerName: borrowerName.toUpperCase(),
-      borrowerPhone: borrowerPhone || '9800000000',
+      borrowerPhone: borrowerPhone || '',
       borrowerAddress: borrowerAddress || '',
       borrowerAadhar: borrowerAadhar || '',
       documents: documents || [],
@@ -912,7 +874,7 @@ export function AppProvider({ children }) {
       action: 'LOAN_DISBURSED',
       details: `Disbursed new ${type.toUpperCase()} loan #${nextId} to ${newLoan.borrowerName} for ₹${p.toLocaleString()} (${m} Months, Guarantor: ${newLoan.guarantor}, Standard Kisht: ₹${kisht.toLocaleString()}/mo).`,
       canRollback: true,
-      rollbackData: { type: 'new_loan', loanId: nextId }
+      rollbackData: { type: 'new_loan', loanId: nextId, meetingMonth }
     };
     const updatedLogs = [logEntry, ...auditLogs];
     setAuditLogs(updatedLogs);
@@ -986,8 +948,9 @@ export function AppProvider({ children }) {
 
   // Update Annual February Meeting Configuration (custom totals or auto)
   const updateAnnualMeetingConfig = (newConfig) => {
+    if (!isSuperAdmin) return;
     setAnnualMeetingConfig(newConfig);
-    localStorage.setItem('comm_annual_meeting_config', JSON.stringify(newConfig));
+    writeStoredValue('comm_annual_meeting_config', JSON.stringify(newConfig));
     addLog(
       'ANNUAL_CONFIG_UPDATED',
       `Updated Annual February Meeting loan totals configuration (Mode: ${newConfig.useCustomTotals ? 'Custom' : 'Auto'}).`,
@@ -1015,9 +978,10 @@ export function AppProvider({ children }) {
     const selfPoolReturn7Pct = Math.round(selfTotal * 0.07);
     const outerPoolReturn7Pct = Math.round(outerTotal * 0.07);
     const totalCommonPool = selfPoolReturn7Pct + outerPoolReturn7Pct;
-    const perMemberPoolDividend = Math.round(totalCommonPool / 15);
+    const dividends = distributeRupees(totalCommonPool, members.length);
+    const perMemberPoolDividend = dividends.length ? Math.min(...dividends) : 0;
 
-    const memberPayouts = members.map(m => {
+    const memberPayouts = members.map((m, index) => {
       const selfLoansTaken = activeSelfLoans
         .filter(l => l.borrowerName === m.name)
         .reduce((s, l) => s + l.principal, 0);
@@ -1031,14 +995,15 @@ export function AppProvider({ children }) {
         : autoGuaranteed;
 
       const guarantorCommission = Math.round(outerGuaranteed * 0.06);
-      const totalPayout = perMemberPoolDividend + guarantorCommission;
+      const poolDividend = dividends[index] || 0;
+      const totalPayout = poolDividend + guarantorCommission;
 
       return {
         member: m,
         selfLoansTaken,
         outerGuaranteed,
         guarantorCommission,
-        poolDividend: perMemberPoolDividend,
+        poolDividend,
         totalPayout
       };
     });
@@ -1065,10 +1030,13 @@ export function AppProvider({ children }) {
 
   // Reset to initial data
   const resetToFactory = () => {
-    localStorage.clear();
-    localStorage.setItem('comm_app_data_version', DATA_VERSION);
+    if (!isSuperAdmin) return;
+    clearAppStorage();
+    writeStoredValue('comm_app_data_version', DATA_VERSION);
     setMembers(INITIAL_MEMBERS);
     setLoans(INITIAL_LOANS);
+    setLoansByMonth({ 'September 2026': INITIAL_LOANS });
+    setAnnualMeetingConfig({ useCustomTotals: false, customSelfTotal: null, customOuterTotal: null, customMemberGuarantees: {} });
     setLoanRequests([]);
     setMonthlyUnit(1000);
     setAvailableCashFund(150000);
@@ -1093,6 +1061,8 @@ export function AppProvider({ children }) {
     syncToCloud({
       members: INITIAL_MEMBERS,
       loans: INITIAL_LOANS,
+      loansByMonth: { 'September 2026': INITIAL_LOANS },
+      annualMeetingConfig: { useCustomTotals: false, customSelfTotal: null, customOuterTotal: null, customMemberGuarantees: {} },
       loanRequests: [],
       monthlyUnit: 1000,
       availableCashFund: 150000,
@@ -1120,7 +1090,13 @@ export function AppProvider({ children }) {
       loans,
       loansByMonth,
       monthlyUnit,
-      setMonthlyUnit,
+      setMonthlyUnit: value => {
+        const amount = Number(value);
+        if (!isSuperAdmin || !Number.isFinite(amount) || amount < 0) return;
+        setMonthlyUnit(amount);
+        addLog('MONTHLY_UNIT_UPDATED', `Updated monthly contribution to ₹${amount.toLocaleString()}.`);
+        syncToCloud({ monthlyUnit: amount });
+      },
       availableCashFund,
       setAvailableCashFund,
       meetingMonth,
@@ -1163,8 +1139,4 @@ export function AppProvider({ children }) {
       {children}
     </AppContext.Provider>
   );
-}
-
-export function useApp() {
-  return useContext(AppContext);
 }

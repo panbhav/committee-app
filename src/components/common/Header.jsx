@@ -1,251 +1,41 @@
+import Modal from './Modal';
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
-import { Shield, UserCheck, ChevronDown, History, LogOut } from 'lucide-react';
+import { useApp } from '../../context/useApp';
+import { Landmark, ChevronDown, History, LogOut, X, Globe2, ShieldCheck } from 'lucide-react';
 import ActivityLogsModal from './ActivityLogsModal';
+import { DEMO_MODE } from '../../config';
 
 export default function Header() {
-  const {
-    currentUser,
-    setCurrentUser,
-    members,
-    loans,
-    currentOuterLoanId,
-    setCurrentOuterLoanId,
-    isSuperAdmin,
-    meetingMonth,
-    AVAILABLE_MONTHS,
-    changeMeetingMonth,
-    auditLogs,
-    lang,
-    t,
-    toggleLanguage,
-    cloudSyncStatus
-  } = useApp();
-
-  const [showSwitchModal, setShowSwitchModal] = useState(false);
-  const [showLogsModal, setShowLogsModal] = useState(false);
-
-  // Outer loans list for switcher
-  const outerLoans = loans.filter(l => l.type === 'outer');
-
-  return (
-    <>
-      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-2.5 sm:px-4 py-2">
-        <div className="flex items-center justify-between gap-1.5">
-          {/* Left: CA Logo, Title & Compact Month Switcher */}
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center text-slate-950 font-black text-xs sm:text-sm shadow-md shrink-0">
-              BS
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-xs sm:text-sm font-bold text-white tracking-tight leading-tight truncate">
-                {t.appTitle}
-              </h1>
-              <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400 mt-0.5">
-                <select
-                  value={meetingMonth}
-                  onChange={(e) => changeMeetingMonth(e.target.value)}
-                  className="bg-slate-800/90 hover:bg-slate-800 text-slate-200 border border-slate-700/80 rounded px-1 py-0.2 text-[9px] sm:text-[10px] font-bold focus:outline-none focus:border-emerald-500 cursor-pointer transition max-w-[95px] truncate"
-                  title="Switch Meeting Month / महीना बदलें"
-                >
-                  {AVAILABLE_MONTHS.map(m => (
-                    <option key={m} value={m} className="bg-slate-900 text-white text-xs">
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <span className={`inline-flex items-center gap-1 text-[8px] sm:text-[9px] font-bold px-1 py-0.2 rounded-full shrink-0 ${
-                  cloudSyncStatus === 'connected'
-                    ? 'text-emerald-400 bg-emerald-950/60 border border-emerald-800/40'
-                    : cloudSyncStatus === 'connecting'
-                    ? 'text-amber-400 bg-amber-950/60 border border-amber-800/40'
-                    : 'text-slate-400 bg-slate-800/60 border border-slate-700/40'
-                }`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    cloudSyncStatus === 'connected' ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                  }`} />
-                  <span className="hidden xs:inline">{cloudSyncStatus === 'connected' ? 'Live' : 'Sync'}</span>
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Language Switcher, Logs, and User Pill */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Hindi / English Toggle Button */}
-            <button
-              onClick={toggleLanguage}
-              className="px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-bold border transition bg-emerald-950/60 border-emerald-700/50 text-emerald-300 hover:bg-emerald-900/50 shrink-0"
-              title="Switch Language / भाषा बदलें"
-            >
-              {lang === 'hi' ? 'हिंदी' : 'ENG'}
-            </button>
-
-            {/* If Member / Admin: Show Logs and Switcher. If Outsider: Show Logout */}
-            {currentUser ? (
-              <>
-                {/* Logs Button */}
-                <button
-                  onClick={() => setShowLogsModal(true)}
-                  className="flex items-center gap-0.5 sm:gap-1 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-1.5 sm:px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-semibold text-slate-200 transition shrink-0"
-                  title="View Complete Activity Logs"
-                >
-                  <History className="w-3 h-3 text-indigo-400 shrink-0" />
-                  <span className="text-[10px]">{auditLogs.length}</span>
-                </button>
-
-                {/* Active User Switcher Pill */}
-                <button
-                  onClick={() => setShowSwitchModal(true)}
-                  className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700/80 border border-slate-700/80 px-1.5 sm:px-2 py-0.5 rounded-lg transition-all text-[11px] sm:text-xs font-semibold text-slate-200 max-w-[85px] sm:max-w-[120px] shrink-0"
-                  title={currentUser?.name}
-                >
-                  {isSuperAdmin ? (
-                    <Shield className="w-3 h-3 text-amber-400 shrink-0" />
-                  ) : (
-                    <UserCheck className="w-3 h-3 text-emerald-400 shrink-0" />
-                  )}
-                  <span className="truncate">{currentUser?.name}</span>
-                  <ChevronDown className="w-2.5 h-2.5 text-slate-400 shrink-0" />
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={() => {
-                  localStorage.removeItem('comm_logged_in');
-                  window.location.reload();
-                }}
-                className="flex items-center gap-1 bg-red-950/50 hover:bg-red-900/50 border border-red-800/60 text-red-300 px-2 py-0.5 rounded-lg text-[10px] sm:text-xs font-semibold transition shrink-0"
-                title="Logout of Passbook"
-              >
-                <LogOut className="w-3 h-3 shrink-0" />
-                <span>Logout</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Activity Logs Modal */}
-      <ActivityLogsModal
-        isOpen={showLogsModal}
-        onClose={() => setShowLogsModal(false)}
-      />
-
-      {/* Role / User Switcher Modal */}
-      {showSwitchModal && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl space-y-4 max-h-[85vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-white">Switch Active Login</h3>
-                <p className="text-xs text-slate-400">Test the app from different perspectives</p>
-              </div>
-              <button
-                onClick={() => setShowSwitchModal(false)}
-                className="text-xs text-slate-400 hover:text-white bg-slate-800 px-2.5 py-1 rounded-lg"
-              >
-                Close
-              </button>
-            </div>
-
-            {/* 1. Super Admins */}
-            <div>
-              <div className="text-[11px] font-bold text-amber-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Shield className="w-3 h-3" />
-                3 Super Admins (Full Edit Access)
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {members.filter(m => ['NARENDRA', 'MAHENDRA', 'NARESH'].includes(m.name)).map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setCurrentUser(m);
-                      setShowSwitchModal(false);
-                    }}
-                    className={`p-2 rounded-xl border text-left transition text-xs font-bold ${
-                      currentUser?.id === m.id
-                        ? 'border-amber-500 bg-amber-500/10 text-amber-300'
-                        : 'border-slate-800 bg-slate-950 text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    👑 {m.name}
-                    <span className="block text-[9px] font-normal text-slate-400">Super Admin</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. Core 15 Members */}
-            <div>
-              <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <UserCheck className="w-3 h-3" />
-                15 Society Members (Partner Portal)
-              </div>
-              <div className="grid grid-cols-3 gap-1.5 max-h-40 overflow-y-auto p-1 bg-slate-950 rounded-xl border border-slate-800">
-                {members.map(m => (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setCurrentUser(m);
-                      setShowSwitchModal(false);
-                    }}
-                    className={`p-2 rounded-lg text-left text-xs font-semibold truncate transition ${
-                      currentUser?.id === m.id
-                        ? 'bg-emerald-600 text-white'
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    {m.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 3. Outer Borrowers */}
-            <div>
-              <div className="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-2">
-                Outer Borrowers (Passbook Only)
-              </div>
-              <div className="space-y-1 max-h-32 overflow-y-auto p-1 bg-slate-950 rounded-xl border border-slate-800">
-                {outerLoans.slice(0, 8).map(l => (
-                  <button
-                    key={l.id}
-                    onClick={() => {
-                      setCurrentUser(null);
-                      setCurrentOuterLoanId(l.id);
-                      setShowSwitchModal(false);
-                    }}
-                    className={`w-full p-2 rounded-lg text-left text-xs flex justify-between items-center transition ${
-                      !currentUser && currentOuterLoanId === l.id
-                        ? 'bg-sky-600 text-white font-bold'
-                        : 'text-slate-300 hover:bg-slate-800'
-                    }`}
-                  >
-                    <span>#{l.id} {l.borrowerName}</span>
-                    <span className="text-[10px] opacity-75">Guarantor: {l.guarantor}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Logout / Switch Session */}
-            <div className="pt-2 border-t border-slate-800">
-              <button
-                onClick={() => {
-                  localStorage.removeItem('comm_logged_in');
-                  window.location.reload();
-                }}
-                className="w-full text-center text-xs font-bold text-amber-400 hover:text-amber-300 bg-amber-950/40 border border-amber-800/40 py-2 rounded-xl transition flex items-center justify-center gap-1.5"
-              >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>Logout / Switch User</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+  const { currentUser, setCurrentUser, setCurrentOuterLoanId, members, loans, isSuperAdmin, meetingMonth, AVAILABLE_MONTHS, changeMeetingMonth, lang, toggleLanguage, cloudSyncStatus } = useApp();
+  const [showAccount, setShowAccount] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
+  const logout = () => {
+    localStorage.removeItem('comm_logged_in');
+    localStorage.removeItem('comm_current_user');
+    localStorage.removeItem('comm_outer_loan_id');
+    window.location.reload();
+  };
+  return <>
+    <a className="skip-link" href="#main-content">Skip to content</a>
+    <header className="app-header">
+      <div className="brand"><span className="brand-mark"><Landmark size={23} strokeWidth={1.8} /></span><div><h1>Banking Society</h1><p>{lang === 'hi' ? 'साथ बचाएं, साथ बढ़ें' : 'GROWING TOGETHER'}</p></div></div>
+      <div className="header-actions">
+        <span className="sync-badge" title={cloudSyncStatus === 'local' ? 'Demo data is saved in this browser only' : 'Cloud connection status'}><i className={cloudSyncStatus === 'connected' ? 'live' : ''} />{cloudSyncStatus === 'local' ? 'Local demo' : cloudSyncStatus === 'connected' ? 'Live' : cloudSyncStatus === 'connecting' ? 'Connecting' : 'Offline'}</span>
+        <button className="header-icon" onClick={toggleLanguage} aria-label="Switch language"><Globe2 size={16} /><span>{lang === 'hi' ? 'EN' : 'हिंदी'}</span></button>
+        {currentUser && <button className="header-icon history-button" onClick={() => setShowLogs(true)} aria-label="Activity history"><History size={18} /></button>}
+        <button className="account-button" onClick={() => setShowAccount(true)} aria-label="Open account menu"><span className="avatar">{currentUser?.name?.slice(0, 1) || 'B'}</span><span className="account-name">{currentUser?.name || 'Passbook'}<small>{isSuperAdmin ? 'Administrator' : currentUser ? 'Member' : 'Borrower'}</small></span><ChevronDown size={14} /></button>
+      </div>
+    </header>
+    {currentUser && <ActivityLogsModal isOpen={showLogs} onClose={() => setShowLogs(false)} />}
+    {showAccount && <Modal onClose={() => setShowAccount(false)} label="Your account" className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <section aria-labelledby="account-title" className="account-panel" onClick={event => event.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5"><h2 id="account-title" className="text-lg font-bold">{lang === 'hi' ? 'आपका खाता' : 'Your account'}</h2><button onClick={() => setShowAccount(false)} aria-label="Close account menu" className="header-icon"><X size={19} /></button></div>
+        <div className="flex gap-3 items-center mb-5"><span className="avatar large">{currentUser?.name?.slice(0, 1) || 'B'}</span><div className="text-sm font-semibold">{currentUser?.name || 'Borrower passbook'}<p className="text-xs text-slate-400 mt-1 flex items-center gap-1"><ShieldCheck size={13} />{isSuperAdmin ? 'Administrator' : 'Member account'}</p></div></div>
+        <label className="block text-xs text-slate-400 mb-2" htmlFor="account-month">Meeting month</label>
+        <select id="account-month" value={meetingMonth} onChange={event => changeMeetingMonth(event.target.value)} className="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm mb-5">{AVAILABLE_MONTHS.map(month => <option key={month}>{month}</option>)}</select>
+        {DEMO_MODE && <><p className="eyebrow mb-3">EXPLORE DEMO ACCOUNTS</p><div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto mb-4">{members.map(member => <button key={member.id} onClick={() => { setCurrentUser(member); setCurrentOuterLoanId(null); setShowAccount(false); }} className="bg-slate-800 hover:bg-emerald-900 rounded-lg p-2 text-[11px] text-left truncate">{member.name}</button>)}</div><button onClick={() => { setCurrentUser(null); setCurrentOuterLoanId(loans.find(loan => loan.type === 'outer')?.id ?? null); setShowAccount(false); }} className="text-sm text-emerald-300 mb-5">Explore borrower passbook →</button></>}
+        <button onClick={logout} className="w-full border border-slate-700 rounded-xl p-3 text-sm flex items-center justify-center gap-2 hover:bg-slate-800"><LogOut size={16} />{lang === 'hi' ? 'लॉग आउट' : 'Sign out'}</button>
+      </section>
+    </Modal>}
+  </>;
 }
-

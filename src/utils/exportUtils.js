@@ -1,6 +1,4 @@
-import XLSX from 'xlsx-js-style';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { distributeRupees } from './validation';
 
 // Reusable Theme Colors
 const COLORS = {
@@ -62,7 +60,7 @@ const totalBorder = {
 /**
  * Helper to build a styled worksheet with Title, Subtitle, Headers, Data Rows, and Totals
  */
-function createStyledSheet({
+function createStyledSheet(XLSX, {
   title,
   subtitle,
   headerBg,
@@ -125,7 +123,7 @@ function createStyledSheet({
     const isOdd = idx % 2 === 1;
     const rowBg = isOdd ? COLORS.zebraOdd : COLORS.zebraEven;
 
-    const rowCells = headers.map((h, cIdx) => {
+    const rowCells = headers.map((h, _cIdx) => {
       const rawVal = row[h.key];
       const cell = {
         v: rawVal !== undefined && rawVal !== null ? rawVal : "",
@@ -260,7 +258,8 @@ function createStyledSheet({
 /**
  * Export full monthly data to high-presentation styled Excel Workbook
  */
-export function exportToExcel({ members, loans, payments, meetingMonth, getMemberBill, getMemberLimits }) {
+export async function exportToExcel({ members, loans, payments, meetingMonth, getMemberBill, getMemberLimits }) {
+  const { default: XLSX } = await import('xlsx-js-style');
   const wb = XLSX.utils.book_new();
   const currentDate = new Date().toLocaleDateString('en-IN', {
     day: 'numeric',
@@ -322,7 +321,7 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
     deposit: totalDeposit
   };
 
-  const wsSummary = createStyledSheet({
+  const wsSummary = createStyledSheet(XLSX, {
     title: "COMMITTEE MONTHLY BAHIKHATA & COLLECTION REGISTER",
     subtitle: `Meeting Month: ${meetingMonth}  •  Total Expected: ₹${totalDue.toLocaleString()}  •  Generated: ${currentDate}`,
     headerBg: COLORS.emeraldHeader,
@@ -394,7 +393,7 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
     securityFee: totalSecurityFees
   };
 
-  const wsLoans = createStyledSheet({
+  const wsLoans = createStyledSheet(XLSX, {
     title: "ACTIVE LOANS & REMAINING KISHTS REGISTER (SELF & OUTER)",
     subtitle: `Total Active Disbursals: ${loans.length} Loans  •  Meeting Month: ${meetingMonth}  •  Generated: ${currentDate}`,
     headerBg: COLORS.blueHeader,
@@ -444,16 +443,16 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
   const limitsTotals = {
     sno: "TOTAL",
     name: "15 MEMBERS",
-    memberLimit: 15 * 200000,
+    memberLimit: members.reduce((sum, member) => sum + member.memberLimit, 0),
     selfUsed: totalSelfUsed,
     selfLeft: totalSelfLeft,
-    outerLimit: 15 * 800000,
+    outerLimit: members.reduce((sum, member) => sum + member.outerLimit, 0),
     outerUsed: totalOuterUsed,
     outerLeft: totalOuterLeft,
     totalExposure: totalExposureSum
   };
 
-  const wsLimits = createStyledSheet({
+  const wsLimits = createStyledSheet(XLSX, {
     title: "15 MEMBER RISK & GUARANTEE LIMIT AUDIT",
     subtitle: `Personal Max: ₹2,00,000  •  Outer Guarantee Max: ₹8,00,000  •  Generated: ${currentDate}`,
     headerBg: COLORS.purpleHeader,
@@ -471,7 +470,7 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
   try {
     const saved = localStorage.getItem('comm_annual_meeting_config');
     if (saved) annualConfig = JSON.parse(saved);
-  } catch (e) {}
+  } catch {}
 
   const useCustomAnnual = Boolean(annualConfig?.useCustomTotals);
   const autoOuter = loans.filter(l => l.type === 'outer').reduce((s, l) => s + l.principal, 0);
@@ -484,8 +483,9 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
     ? Number(annualConfig.customSelfTotal)
     : autoSelf;
 
-  const pool7PercentDividend = Math.round((totalOuterPrincipal * 0.07) + (totalSelfPrincipal * 0.07));
-  const perMemberPoolDividend = Math.round(pool7PercentDividend / 15);
+  const pool7PercentDividend = Math.round(totalOuterPrincipal * 0.07) + Math.round(totalSelfPrincipal * 0.07);
+  const dividends = distributeRupees(pool7PercentDividend, members.length);
+  const perMemberPoolDividend = dividends.length ? Math.min(...dividends) : 0;
 
   const annualHeaders = [
     { key: "sno", label: "S.NO.", align: "center" },
@@ -502,12 +502,13 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
       ? Number(annualConfig.customMemberGuarantees[m.name])
       : autoGuaranteed;
     const commission = Math.round(guaranteedAmount * 0.06);
-    const payout = perMemberPoolDividend + commission;
+    const poolDividend = dividends[idx] || 0;
+    const payout = poolDividend + commission;
 
     return {
       sno: idx + 1,
       name: m.name,
-      poolDividend: perMemberPoolDividend,
+      poolDividend,
       outerGuaranteed: guaranteedAmount,
       guarantorCommission: commission,
       totalPayout: payout
@@ -521,15 +522,15 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
   const annualTotals = {
     sno: "TOTAL",
     name: "ANNUAL POOL",
-    poolDividend: perMemberPoolDividend * 15,
+    poolDividend: pool7PercentDividend,
     outerGuaranteed: totalGuaranteedAll,
     guarantorCommission: totalCommissionAll,
     totalPayout: totalPayoutAll
   };
 
-  const wsAnnual = createStyledSheet({
+  const wsAnnual = createStyledSheet(XLSX, {
     title: "ANNUAL FEBRUARY GENERAL MEETING - PROFIT & COMMISSION DISTRIBUTION",
-    subtitle: `7% Pool Dividend (₹${perMemberPoolDividend.toLocaleString()} each) + 6% Guarantor Commission  •  Generated: ${currentDate}`,
+    subtitle: `7% Pool Dividend (from ₹${perMemberPoolDividend.toLocaleString()} each; remainder allocated in member order) + 6% Guarantor Commission  •  Generated: ${currentDate}`,
     headerBg: COLORS.amberHeader,
     headers: annualHeaders,
     dataRows: annualData,
@@ -546,7 +547,8 @@ export function exportToExcel({ members, loans, payments, meetingMonth, getMembe
 /**
  * Export clean, branded PDF summary report
  */
-export function exportToPDF({ members, loans, payments, meetingMonth, getMemberBill }) {
+export async function exportToPDF({ members, loans, payments, meetingMonth, getMemberBill }) {
+  const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import('jspdf'), import('jspdf-autotable')]);
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const currentDate = new Date().toLocaleDateString('en-IN', {
     day: 'numeric',

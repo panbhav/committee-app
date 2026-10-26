@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { useApp } from '../../context/AppContext';
+import { useApp } from '../../context/useApp';
 import { formatINR } from '../../utils/loanCalculator';
 import { CheckCircle2, Minus, Plus, Edit2, Clock, Check } from 'lucide-react';
 
-export default function KishtProgressStepper({ loan, compact = false }) {
+export default function KishtProgressStepper({ loan }) {
   const { isSuperAdmin, updateLoanKisht } = useApp();
   const [isEditing, setIsEditing] = useState(false);
+
+  const [inputCurrent, setInputCurrent] = useState(1);
+  const [inputRemaining, setInputRemaining] = useState(0);
 
   if (!loan) return null;
 
@@ -18,8 +21,6 @@ export default function KishtProgressStepper({ loan, compact = false }) {
   const progressPercent = Math.min(100, Math.round((currentM / totalM) * 100));
 
   // Edit modal local states
-  const [inputCurrent, setInputCurrent] = useState(currentM);
-  const [inputRemaining, setInputRemaining] = useState(remainingKishts);
 
   const handleOpenEdit = (e) => {
     e?.stopPropagation();
@@ -86,11 +87,11 @@ export default function KishtProgressStepper({ loan, compact = false }) {
           {/* Remaining Kisht Badge */}
           {isCompleted ? (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-950/90 text-emerald-400 border border-emerald-800/60">
-              Completed (पूर्ण)
+              Final installment
             </span>
           ) : (
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-amber-950/80 text-amber-300 border border-amber-800/60 flex items-center gap-1">
-              <span>{remainingKishts} Bachi (Remaining)</span>
+              <span>{remainingKishts} after current</span>
               <span className="text-amber-500">•</span>
               <span className="text-amber-200">{formatINR(remainingBalance)}</span>
             </span>
@@ -165,10 +166,10 @@ export default function KishtProgressStepper({ loan, compact = false }) {
               <div className="grid grid-cols-2 gap-2.5">
                 {/* Current Month input */}
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">
+                  <label htmlFor="kishtprogressstepper-field-1" className="text-slate-300 font-semibold block mb-1">
                     Current Kisht:
                   </label>
-                  <input
+                  <input id="kishtprogressstepper-field-1"
                     type="number"
                     min="1"
                     max={totalM}
@@ -183,10 +184,10 @@ export default function KishtProgressStepper({ loan, compact = false }) {
 
                 {/* Remaining Kisht input */}
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">
+                  <label htmlFor="kishtprogressstepper-field-2" className="text-slate-300 font-semibold block mb-1">
                     Remaining (बाकी):
                   </label>
-                  <input
+                  <input id="kishtprogressstepper-field-2"
                     type="number"
                     min="0"
                     max={totalM - 1}

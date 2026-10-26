@@ -6,6 +6,8 @@
 export async function processFileAttachment(file, label = 'Security Document') {
   return new Promise((resolve, reject) => {
     if (!file) return resolve(null);
+    if (!['application/pdf', 'image/jpeg', 'image/png', 'image/webp'].includes(file.type)) return reject(new Error('Choose a JPEG, PNG, WebP image or a PDF.'));
+    if (file.size > 10 * 1024 * 1024) return reject(new Error('Image files must be under 10MB.'));
 
     // If PDF
     if (file.type === 'application/pdf') {
@@ -52,6 +54,9 @@ export async function processFileAttachment(file, label = 'Security Document') {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('Image processing is unavailable in this browser.'));
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
